@@ -1,0 +1,3 @@
+[submodule "domato"]
+	path = domato
+	url = https://github.com/canalun/domato-changed.git
