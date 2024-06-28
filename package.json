@@ -1,0 +1,20 @@
+{
+  "name": "EffectBuster",
+  "version": "0.0.1",
+  "description": "fuzzer to bust the effect of your script",
+  "main": "index.js",
+  "repository": "git@github.com:canalun/EffectBuster.git",
+  "author": "canalun <i.am.kanaru.sato@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "start": "yarn run build:live",
+    "build": "tsc -p .",
+    "build:live": "nodemon --watch 'src/**/*.ts' --exec \"ts-node\" src/index.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.2",
+    "nodemon": "^3.1.4"
+  }
+}
