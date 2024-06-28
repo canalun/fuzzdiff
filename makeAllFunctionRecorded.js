@@ -15,14 +15,15 @@ for (const name of changeableBuiltInNames) {
   for (let i = 0; i < path.length; i++) {
     if (i < path.length - 1) {
       try {
+        // Some APIs such as `callee` throw when it's accessed.
         target = target[path[i]];
       } catch {
         break;
       }
     } else {
-      // Some APIs throw when it's accessed.
       let original = null;
       try {
+        // Some APIs such as `callee` throw when it's accessed.
         original = target[path[i]];
       } catch {
         break;
@@ -31,6 +32,11 @@ for (const name of changeableBuiltInNames) {
         const originalFunction = original; // Keep a direct reference to the original function.
         const handler = {
           apply(_target, thisArg, argumentsList) {
+            const result = Reflect.apply(
+              originalFunction,
+              thisArg,
+              argumentsList
+            );
             if (window["isRecorded"]) {
               let args = "";
               try {
@@ -38,9 +44,15 @@ for (const name of changeableBuiltInNames) {
               } catch {
                 args = "*****************";
               }
-              window["record"].push({ name, argumentsList: args });
+              let result = "";
+              try {
+                result = JSON.stringify(result);
+              } catch {
+                result = "*****************";
+              }
+              window["record"].push({ name, argumentsList: args, result });
             }
-            return Reflect.apply(originalFunction, thisArg, argumentsList); // Use the original function here.
+            return result;
           },
         };
         target[path[i]] = new Proxy(original, handler);
@@ -90,7 +102,7 @@ function getChangeableBuiltInNames() {
     "globalThis.Object.values",
     "globalThis.Object.groupBy",
     "globalThis.Function",
-    // avoid strict mode error
+    // these cannot be used under strict mode
     // 'globalThis.Function.prototype.arguments',
     // 'globalThis.Function.prototype.caller',
     "globalThis.Function.prototype.apply",
