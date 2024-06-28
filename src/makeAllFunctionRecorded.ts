@@ -1,67 +1,83 @@
 // https://gist.github.com/canalun/0713a64cf95ada95ed6cffda21069aef
 
-window["record"] = [];
-
-// The recording starts when you set it as true.
-// Otherwise, the process in this file would be also recorded.
-window["isRecorded"] = false;
-
-const changeableBuiltInNames = getChangeableBuiltInNames();
-
-for (const name of changeableBuiltInNames) {
-  let target = window;
-  const path = name.split(".");
-
-  for (let i = 0; i < path.length; i++) {
-    if (i < path.length - 1) {
-      try {
-        // Some APIs such as `callee` throw when it's accessed.
-        target = target[path[i]];
-      } catch {
-        break;
-      }
-    } else {
-      let original = null;
-      try {
-        // Some APIs such as `callee` throw when it's accessed.
-        original = target[path[i]];
-      } catch {
-        break;
-      }
-      if (original instanceof Function) {
-        const originalFunction = original; // Keep a direct reference to the original function.
-        const handler = {
-          apply(_target, thisArg, argumentsList) {
-            const result = Reflect.apply(
-              originalFunction,
-              thisArg,
-              argumentsList
-            );
-            if (window["isRecorded"]) {
-              let args = "";
-              try {
-                args = JSON.stringify(argumentsList);
-              } catch {
-                args = "*****************";
-              }
-              let result = "";
-              try {
-                result = JSON.stringify(result);
-              } catch {
-                result = "*****************";
-              }
-              window["record"].push({ name, argumentsList: args, result });
-            }
-            return result;
-          },
-        };
-        target[path[i]] = new Proxy(original, handler);
-      }
-    }
+declare global {
+  interface Window {
+    record: {
+      name: string;
+      argumentsList: string;
+      result: string;
+    }[];
+    isRecorded: boolean;
   }
 }
 
-isRecorded = true;
+export function makeAllFunctionRecorded() {
+  window.record = [];
+
+  // The recording starts when you set it as true.
+  // Otherwise, the process in this file would be also recorded.
+  window.isRecorded = false;
+
+  const changeableBuiltInNames = getChangeableBuiltInNames();
+
+  for (const name of changeableBuiltInNames) {
+    let target = window;
+    const path = name.split(".");
+
+    for (let i = 0; i < path.length; i++) {
+      if (i < path.length - 1) {
+        try {
+          // Some APIs such as `callee` throw when it's accessed.
+          // @ts-ignore
+          target = target[path[i]];
+        } catch {
+          break;
+        }
+      } else {
+        let original = null;
+        try {
+          // Some APIs such as `callee` throw when it's accessed.
+          // @ts-ignore
+          original = target[path[i]];
+        } catch {
+          break;
+        }
+        if (original instanceof Function) {
+          const originalFunction = original; // Keep a direct reference to the original function.
+          const handler: ProxyHandler<{}> = {
+            apply(_, thisArg, argumentsList) {
+              const result = Reflect.apply(
+                originalFunction,
+                thisArg,
+                argumentsList
+              );
+              if (window["isRecorded"]) {
+                let args = "";
+                try {
+                  args = JSON.stringify(argumentsList);
+                } catch {
+                  args = "*****************";
+                }
+                let result = "";
+                try {
+                  result = JSON.stringify(result);
+                } catch {
+                  result = "*****************";
+                }
+                window["record"].push({ name, argumentsList: args, result });
+              }
+              return result;
+            },
+          };
+          // @ts-ignore
+          target[path[i]] = new Proxy(original, handler);
+        }
+      }
+    }
+  }
+
+  window.isRecorded = true;
+}
 
 // ref: https://gist.github.com/canalun/67164839b74ca810e6c549d6646c6cfd
 function getChangeableBuiltInNames() {
