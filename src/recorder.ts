@@ -1,12 +1,14 @@
 // https://gist.github.com/canalun/0713a64cf95ada95ed6cffda21069aef
 
+type ApiRecord = {
+  name: string;
+  argumentsList: string;
+  result: string;
+};
+
 declare global {
   interface Window {
-    record: {
-      name: string;
-      argumentsList: string;
-      result: string;
-    }[];
+    apiRecords: ApiRecord[];
     isRecorded: boolean;
   }
 }
@@ -19,8 +21,12 @@ export function stopRecording() {
   window.isRecorded = false;
 }
 
+export function getRecords() {
+  return window.apiRecords;
+}
+
 export function makeAllFunctionRecorded() {
-  window.record = [];
+  window.apiRecords = [];
 
   // The recording starts when you set it as true.
   // Otherwise, the process in this file would be also recorded.
@@ -70,7 +76,11 @@ export function makeAllFunctionRecorded() {
                 } catch {
                   result = "*****************";
                 }
-                window["record"].push({ name, argumentsList: args, result });
+                window["apiRecords"].push({
+                  name,
+                  argumentsList: args,
+                  result,
+                });
               }
               return result;
             },
