@@ -10,3 +10,7 @@ export function generateData(dataNum: number): string {
   );
   return outputDirPath;
 }
+
+export function runScript() {
+  window.jsfuzzer();
+}
