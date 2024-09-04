@@ -1,5 +1,5 @@
 {
-  "name": "fuzzdiff",
+  "name": "@canalun/fuzzdiff",
   "version": "0.0.1",
   "description": "fuzzer to bust the effect of your script",
   "main": "index.js",
