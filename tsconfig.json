@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "esModuleInterop": true,
+
+    "lib": ["ESNext", "ES2021.String", "DOM"],
+    "types": ["node"],
+
+    "rootDir": "src",
+    "outDir": "dist/esm",
+
+    "sourceMap": true,
+    "declaration": true,
+
+    "strict": true,
+    "forceConsistentCasingInFileNames": true
+  }
+}

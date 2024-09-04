@@ -1,20 +1,7 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "target": "ESNext",
     "module": "ESNext",
-    "moduleResolution": "Node",
-    "esModuleInterop": true,
-
-    "lib": ["ESNext", "DOM"],
-    "types": ["node"],
-
-    "rootDir": "src",
-    "outDir": "dist/esm",
-
-    "sourceMap": true,
-    "declaration": true,
-
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-  },
+    "outDir": "dist/esm"
+  }
 }
