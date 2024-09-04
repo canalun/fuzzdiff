@@ -51,28 +51,41 @@ declare global {
   }
 }
 
-const timeout = 2000;
+const TIMEOUT = 2000;
 async function removeInvalidCases(dataDir: string, page: Page) {
   const files = fs.readdirSync(dataDir);
 
   for (let i = 0; i < files.length; i++) {
-    console.log(`validate case: ${files[i]}`);
+    const file = files[i];
+    console.log(`validate case: ${file}`);
     try {
-      await page.goto("file://" + path.resolve(dataDir, files[i]), {
-        timeout,
-        waitUntil: "load",
-      });
-      await page.evaluate(`(${makeAllFunctionRecorded.toString()})()`);
-      await page.evaluate(`(${startRecording.toString()})()`);
-      await page.evaluate(`(${runScript.toString()})()`);
-      await page.evaluate(`(${stopRecording.toString()})()`);
-      await page.evaluate(`(${getRecords.toString()})()`, { timeout });
+      const record1 = await goThrough(dataDir, file, page);
+      const record2 = await goThrough(dataDir, file, page);
+      if (record1.length !== record2.length) {
+        throw new Error("flaky case");
+      }
     } catch (e) {
       console.log(`remove invalid case: ${files[i]}`);
       console.log(`\terror: ${e}`);
       fs.unlinkSync(path.resolve(dataDir, files[i]));
     }
   }
+}
+
+async function goThrough(dataDir: string, file: string, page: Page) {
+  await page.goto("file://" + path.resolve(dataDir, file), {
+    timeout: TIMEOUT,
+    waitUntil: "load",
+  });
+  await page.evaluate(`(${makeAllFunctionRecorded.toString()})()`);
+  await page.evaluate(`(${startRecording.toString()})()`);
+  await page.evaluate(`(${runScript.toString()})()`);
+  await page.evaluate(`(${stopRecording.toString()})()`);
+  const records = await page.evaluate<ReturnType<typeof getRecords>>(
+    `(${getRecords.toString()})()`,
+    { timeout: TIMEOUT }
+  );
+  return records;
 }
 
 async function run(
@@ -83,12 +96,14 @@ async function run(
 ) {
   const files = fs.readdirSync(dataDir);
 
+  console.log("test cases: ", files.join("\n"));
+
   for (let i = 0; i < files.length; i++) {
     console.log("run test: ", files[i]);
     try {
       // run without script
       await page.goto("file://" + path.resolve(dataDir, files[i]), {
-        timeout: timeout * 2,
+        timeout: TIMEOUT * 2,
         waitUntil: "load",
       });
 
@@ -97,19 +112,18 @@ async function run(
       await page.evaluate(`(${runScript.toString()})()`);
       await page.evaluate(`(${stopRecording.toString()})()`);
 
-      const recordsWithoutScript = await page.evaluate<string>(
-        `(${getRecords.toString()})()`,
-        { timeout }
-      );
+      const recordsWithoutScript = await page.evaluate<
+        ReturnType<typeof getRecords>
+      >(`(${getRecords.toString()})()`, { timeout: TIMEOUT });
 
       // run with script
       await page.goto("file://" + path.resolve(dataDir, files[i]), {
-        timeout: timeout * 2,
+        timeout: TIMEOUT * 2,
         waitUntil: "load",
       });
 
       await page.addScriptTag({
-        path: path.resolve(__dirname, pathToScriptFile),
+        path: path.resolve(process.cwd(), pathToScriptFile),
       });
       await scenario(page);
 
@@ -118,18 +132,31 @@ async function run(
       await page.evaluate(`(${runScript.toString()})()`);
       await page.evaluate(`(${stopRecording.toString()})()`);
 
-      const recordsWithScript = await page.evaluate<string>(
-        `(${getRecords.toString()})()`,
-        { timeout }
-      );
+      const recordsWithScript = await page.evaluate<
+        ReturnType<typeof getRecords>
+      >(`(${getRecords.toString()})()`, { timeout: TIMEOUT });
 
       // compare
-      if (recordsWithoutScript === recordsWithScript) {
+      let isDifferent = false;
+      for (let i = 0; i < recordsWithoutScript.length; i++) {
+        const r1 = recordsWithScript[i];
+        const r2 = recordsWithoutScript[i];
+        if (
+          r1.name !== r2.name ||
+          r1.argumentsList !== r2.argumentsList ||
+          r1.result !== r2.result
+        ) {
+          isDifferent = true;
+          break;
+        }
+      }
+
+      if (isDifferent) {
         console.log(`\tresult: ❌ found different records`);
         writeResultToFile(
           i.toString(),
-          recordsWithoutScript,
-          recordsWithScript
+          JSON.stringify(recordsWithoutScript),
+          JSON.stringify(recordsWithScript)
         );
       } else {
         console.log(`\tresult: 🟢 no different records = no effect`);
