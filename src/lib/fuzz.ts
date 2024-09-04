@@ -17,7 +17,7 @@ export async function fuzz(
       resolve();
     });
   },
-  dataNum: number = 100,
+  dataNum: number = 20,
   browserOptions: {
     launchOptions?: LaunchOptions;
     contextOptions?: BrowserContextOptions;
