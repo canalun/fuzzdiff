@@ -11,17 +11,17 @@ import {
 } from "./recorder";
 
 export async function fuzz(
-  scriptFile: string,
+  pathToScriptFile: string,
   scenario: (page: Page) => Promise<void> = () => {
     return new Promise<void>((resolve) => {
       resolve();
     });
   },
+  dataNum: number = 100,
   browserOptions: {
     launchOptions?: LaunchOptions;
     contextOptions?: BrowserContextOptions;
-  } = {},
-  dataNum: number = 100
+  } = {}
 ) {
   const dataDir = generateData(dataNum);
 
@@ -29,7 +29,7 @@ export async function fuzz(
 
   removeInvalidCases(dataDir, page);
 
-  run(scriptFile, dataDir, page, scenario);
+  run(pathToScriptFile, dataDir, page, scenario);
 }
 
 declare global {
@@ -63,7 +63,7 @@ async function removeInvalidCases(dataDir: string, page: Page) {
 }
 
 async function run(
-  scriptFile: string,
+  pathToScriptFile: string,
   dataDir: string,
   page: Page,
   scenario: (page: Page) => Promise<void>
@@ -93,7 +93,9 @@ async function run(
         waitUntil: "load",
       });
 
-      await page.addScriptTag({ path: path.resolve(__dirname, scriptFile) });
+      await page.addScriptTag({
+        path: path.resolve(__dirname, pathToScriptFile),
+      });
       await scenario(page);
 
       await page.evaluate(`(${makeAllFunctionRecorded.toString()})()`);
