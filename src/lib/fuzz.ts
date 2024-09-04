@@ -21,15 +21,26 @@ export async function fuzz(
   browserOptions: {
     launchOptions?: LaunchOptions;
     contextOptions?: BrowserContextOptions;
-  } = {}
+  } = {
+    launchOptions: { headless: false },
+  }
 ) {
+  console.log("generate fuzz data👶");
   const dataDir = generateData(dataNum);
 
+  console.log("setup browser🌐");
   const page = await createBrowserPage(browserOptions);
 
-  removeInvalidCases(dataDir, page);
+  console.log("validate test cases🔍");
+  await removeInvalidCases(dataDir, page);
 
-  run(pathToScriptFile, dataDir, page, scenario);
+  console.log("run test cases🏃");
+  await run(pathToScriptFile, dataDir, page, scenario);
+
+  console.log("done. closing browser👋");
+  await page.close();
+  await page.context().close();
+  await page.context().browser()?.close();
 }
 
 declare global {
@@ -44,6 +55,7 @@ async function removeInvalidCases(dataDir: string, page: Page) {
   const files = fs.readdirSync(dataDir);
 
   for (let i = 0; i < files.length; i++) {
+    console.log(`validate case: ${files[i]}`);
     try {
       await page.goto("file://" + path.resolve(dataDir, files[i]), {
         timeout,
@@ -71,6 +83,7 @@ async function run(
   const files = fs.readdirSync(dataDir);
 
   for (let i = 0; i < files.length; i++) {
+    console.log("run test: ", files[i]);
     try {
       // run without script
       await page.goto("file://" + path.resolve(dataDir, files[i]), {
@@ -112,17 +125,14 @@ async function run(
       for (let j = 0; j < recordsWithoutScript.length; j++) {
         if (recordsWithoutScript[j] !== recordsWithScript[j]) {
           isDifferent = true;
-          console.log(`run test: ${files[i]}`);
           console.log(`\tresult: ❌ found different records`);
           break;
         }
       }
       if (!isDifferent) {
-        console.log(`run test: ${files[i]}`);
         console.log(`\tresult: 🟢 no different records = no effect`);
       }
     } catch (e) {
-      console.log(`run test: ${files[i]}`);
       console.log(`\terror: ${e}`);
     }
   }
