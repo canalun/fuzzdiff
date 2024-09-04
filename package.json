@@ -1,9 +1,9 @@
 {
-  "name": "EffectBuster",
+  "name": "fuzzdiff",
   "version": "0.0.1",
   "description": "fuzzer to bust the effect of your script",
   "main": "index.js",
-  "repository": "git@github.com:canalun/EffectBuster.git",
+  "repository": "git@github.com:canalun/fuzzdiff.git",
   "author": "canalun <i.am.kanaru.sato@gmail.com>",
   "license": "MIT",
   "scripts": {
