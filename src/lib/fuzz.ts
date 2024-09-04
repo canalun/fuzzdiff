@@ -9,6 +9,7 @@ import {
   startRecording,
   stopRecording,
 } from "./recorder";
+import diff from "fast-diff";
 
 export async function fuzz(
   pathToScriptFile: string,
@@ -96,9 +97,10 @@ async function run(
       await page.evaluate(`(${runScript.toString()})()`);
       await page.evaluate(`(${stopRecording.toString()})()`);
 
-      const recordsWithoutScript = await page.evaluate<
-        ReturnType<typeof getRecords>
-      >(`(${getRecords.toString()})()`, { timeout });
+      const recordsWithoutScript = await page.evaluate<string>(
+        `(${getRecords.toString()})()`,
+        { timeout }
+      );
 
       // run with script
       await page.goto("file://" + path.resolve(dataDir, files[i]), {
@@ -116,24 +118,56 @@ async function run(
       await page.evaluate(`(${runScript.toString()})()`);
       await page.evaluate(`(${stopRecording.toString()})()`);
 
-      const recordsWithScript = await page.evaluate<
-        ReturnType<typeof getRecords>
-      >(`(${getRecords.toString()})()`, { timeout });
+      const recordsWithScript = await page.evaluate<string>(
+        `(${getRecords.toString()})()`,
+        { timeout }
+      );
 
       // compare
-      let isDifferent = false;
-      for (let j = 0; j < recordsWithoutScript.length; j++) {
-        if (recordsWithoutScript[j] !== recordsWithScript[j]) {
-          isDifferent = true;
-          console.log(`\tresult: ❌ found different records`);
-          break;
-        }
-      }
-      if (!isDifferent) {
+      if (recordsWithoutScript === recordsWithScript) {
+        console.log(`\tresult: ❌ found different records`);
+        writeResultToFile(
+          i.toString(),
+          recordsWithoutScript,
+          recordsWithScript
+        );
+      } else {
         console.log(`\tresult: 🟢 no different records = no effect`);
       }
     } catch (e) {
       console.log(`\terror: ${e}`);
     }
   }
+}
+
+function writeResultToFile(
+  filePrefix: string,
+  resultWithoutScript: string,
+  resultWithScript: string
+) {
+  const outputDirPath = path.join(process.cwd(), "fuzz");
+
+  fs.writeFileSync(
+    path.join(outputDirPath, `${filePrefix}-without-script.txt`),
+    resultWithoutScript.replaceAll(`"},{"name`, `"},\n{"name`)
+  );
+  fs.writeFileSync(
+    path.join(outputDirPath, `${filePrefix}-with-script.txt`),
+    resultWithScript.replaceAll(`"},{"name`, `"},\n{"name`)
+  );
+  const resultDiff = diff(resultWithoutScript, resultWithScript);
+  fs.writeFileSync(
+    path.join(outputDirPath, `${filePrefix}-resultDiff.txt`),
+    resultDiff
+      .map(([type, value]) => {
+        if (type === 0) {
+          return value;
+        } else if (type === 1) {
+          return `\n\n\n\n\n\n+${value}\n\n\n\n\n\n`;
+        } else if (type === -1) {
+          return `\n\n\n\n\n\n-${value}\n\n\n\n\n\n`;
+        }
+      })
+      .join("")
+  );
 }
