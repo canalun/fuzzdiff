@@ -61,7 +61,11 @@ async function removeInvalidCases(dataDir: string, page: Page) {
     try {
       const record1 = await goThrough(dataDir, file, page);
       const record2 = await goThrough(dataDir, file, page);
-      if (record1.length !== record2.length) {
+      const record3 = await goThrough(dataDir, file, page);
+      if (
+        record1.length !== record2.length ||
+        record2.length !== record3.length
+      ) {
         throw new Error("flaky case");
       }
     } catch (e) {
@@ -135,6 +139,24 @@ async function run(
       const recordsWithScript = await page.evaluate<
         ReturnType<typeof getRecords>
       >(`(${getRecords.toString()})()`, { timeout: TIMEOUT });
+
+      // When running the fuzzed script with the tested script,
+      // the process of initializing the tested one occurs.
+      // The records without the tested script also have some initialization that is common to the records with the tested script.
+      // So it's efficient to compare the records after removing records for initialization.
+      const startIndex1 = recordsWithoutScript.findIndex(
+        (r) =>
+          r.name.includes("getElementById") &&
+          r.argumentsList === `["htmlvar00001"]` // refer to domato template.html
+      );
+      recordsWithoutScript.splice(0, startIndex1);
+
+      const startIndex2 = recordsWithScript.findIndex(
+        (r) =>
+          r.name.includes("getElementById") &&
+          r.argumentsList === `["htmlvar00001"]` // refer to domato template.html
+      );
+      recordsWithScript.splice(0, startIndex2);
 
       // compare
       let isDifferent = false;
