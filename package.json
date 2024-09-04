@@ -10,7 +10,8 @@
   "license": "MIT",
   "scripts": {
     "build:cjs": "tsc --project tsconfig.cjs.json",
-    "build:esm": "tsc --project tsconfig.esm.json"
+    "build:esm": "tsc --project tsconfig.esm.json",
+    "build": "yarn build:cjs && yarn build:esm"
   },
   "devDependencies": {
     "typescript": "^5.5.2"
