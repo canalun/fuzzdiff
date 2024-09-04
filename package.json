@@ -1,20 +1,18 @@
 {
   "name": "@canalun/fuzzdiff",
   "version": "0.0.1",
-  "description": "fuzzer to bust the effect of your script",
-  "main": "index.js",
+  "description": "fuzzer for third party script developers",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
   "repository": "git@github.com:canalun/fuzzdiff.git",
   "author": "canalun <i.am.kanaru.sato@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "start": "yarn run build:live",
-    "build": "tsc -p .",
-    "build:live": "nodemon --watch 'src/**/*.ts' --exec \"ts-node\" src/index.ts"
+    "build:cjs": "tsc --project tsconfig.cjs.json",
+    "build:esm": "tsc --project tsconfig.esm.json"
   },
   "devDependencies": {
-    "@types/node": "^20.14.9",
-    "nodemon": "^3.1.4",
-    "ts-node": "^10.9.2",
     "typescript": "^5.5.2"
   },
   "dependencies": {
