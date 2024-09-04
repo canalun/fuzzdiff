@@ -2,7 +2,7 @@ import { BrowserContextOptions, LaunchOptions, Page } from "@playwright/test";
 import fs from "fs";
 import path from "path";
 import { generateData, runScript } from "./generator";
-import { createBrowserPage } from "./playwright";
+import { createBrowserPage } from "./browser";
 import {
   getRecords,
   makeAllFunctionRecorded,
