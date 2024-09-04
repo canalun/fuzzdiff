@@ -2,3 +2,6 @@
 /src
 tsconfig.cjs.json
 tsconfig.esm.json
+tsconfig.json
+.gitmodules
+.gitignore
