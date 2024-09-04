@@ -1,2 +1,2 @@
-# EffectBuster
-fuzzer to bust the effect of your script
+# fuzzdiff 
+fuzzer for third party script developers :)
