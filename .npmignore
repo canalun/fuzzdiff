@@ -3,5 +3,6 @@
 tsconfig.cjs.json
 tsconfig.esm.json
 tsconfig.json
+yarn.lock
 .gitmodules
 .gitignore
