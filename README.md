@@ -9,7 +9,7 @@ import { fuzz } from '@canalun/fuzzdiff'
 fuzz('path/to/your/script')
 ```
 
-Please try by using samples.
+Please try samples.
 ```bash
 $ node ./sample/fuzztest.mjs
 ```
