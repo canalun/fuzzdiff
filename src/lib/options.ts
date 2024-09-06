@@ -1,7 +1,11 @@
 import { BrowserContextOptions, LaunchOptions, Page } from "@playwright/test";
 
 type Options = {
-  pathToScriptFile: string;
+  scriptFilePath: string;
+  /**
+   * The default is './fuzz'.
+   */
+  outputPath: string;
   scenario: (page: Page) => Promise<void>;
   /**
    * The default value is 20.
@@ -22,10 +26,11 @@ type Options = {
 };
 
 export type UserOptions = Partial<Options> & {
-  pathToScriptFile: string;
+  scriptFilePath: string;
 };
 
 const defaultOptions: PickAndRequireOptionalProps<UserOptions> = {
+  outputPath: "./fuzz",
   scenario: () => {
     return new Promise<void>((resolve) => {
       resolve();

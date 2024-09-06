@@ -14,24 +14,22 @@ import {
 } from "./recorder";
 import { generateResultHTML, Result } from "./result";
 
-const OUTPUT_DIR_PATH = path.join(process.cwd(), "fuzz");
-
 export async function fuzz(_options: UserOptions) {
   const options = getMergedOptions(_options);
 
   console.log("--- generate fuzz data👶 ---");
-  const dataDir = generateData(options.dataNum);
+  const outputPath = generateData(options.dataNum, options.outputPath);
 
   console.log("--- setup browser🌐 ---");
   const page = await createBrowserPage(options.browserOptions);
 
   console.log("--- validate test cases🔍 ---");
-  const caseProfiles = await validateCases(dataDir, page);
+  const caseProfiles = await validateCases(outputPath, page);
 
   console.log("--- run test cases🏃 ---");
   const results = await run(
-    options.pathToScriptFile,
-    dataDir,
+    options.scriptFilePath,
+    outputPath,
     page,
     options.scenario,
     options.performanceThreshold,
@@ -44,7 +42,7 @@ export async function fuzz(_options: UserOptions) {
   await page.context().browser()?.close();
 
   console.log("--- generate result📝 ---");
-  const resultPath = generateResultHTML(results, OUTPUT_DIR_PATH);
+  const resultPath = generateResultHTML(results, outputPath);
   console.log("result: ", resultPath);
 }
 
@@ -73,7 +71,7 @@ async function validateCases(dataDir: string, page: Page) {
     const results = [];
     try {
       for (let i = 0; i < SAMPLE_NUM; i++) {
-        const result = await goThrough(dataDir, file, page);
+        const result = await goThrough(path.resolve(dataDir, file), page);
         if (i > 0 && compareRecords(results[i - 1].records, result.records)) {
           throw new Error("flaky case");
         }
@@ -94,8 +92,8 @@ async function validateCases(dataDir: string, page: Page) {
   return caseProfiles;
 }
 
-async function goThrough(dataDir: string, file: string, page: Page) {
-  await page.goto("file://" + path.resolve(dataDir, file), {
+async function goThrough(pathToFile: string, page: Page) {
+  await page.goto("file://" + pathToFile, {
     timeout: TIMEOUT,
     waitUntil: "load",
   });
@@ -169,6 +167,7 @@ async function run(
       if (isRecordsDifferent) {
         console.log(`\tresult: ❌ found side effect`);
         paths = writeResultToFile(
+          dataDir,
           i.toString(),
           JSON.stringify(caseProfile.records),
           JSON.stringify(recordsWithScript)
@@ -293,26 +292,27 @@ function checkDurations(
 }
 
 function writeResultToFile(
+  outputPath: string,
   filePrefix: string,
   resultWithoutScript: string,
   resultWithScript: string
 ) {
   const pathToRecordWithoutScript = `${filePrefix}-without-script.txt`;
   fs.writeFileSync(
-    path.join(OUTPUT_DIR_PATH, pathToRecordWithoutScript),
+    path.join(outputPath, pathToRecordWithoutScript),
     resultWithoutScript.replaceAll(`"},{"name`, `"},\n{"name`)
   );
 
   const pathToRecordWithScript = `${filePrefix}-with-script.txt`;
   fs.writeFileSync(
-    path.join(OUTPUT_DIR_PATH, pathToRecordWithScript),
+    path.join(outputPath, pathToRecordWithScript),
     resultWithScript.replaceAll(`"},{"name`, `"},\n{"name`)
   );
 
   const pathToRecordDiff = `${filePrefix}-resultDiff.txt`;
   const resultDiff = diff(resultWithoutScript, resultWithScript);
   fs.writeFileSync(
-    path.join(OUTPUT_DIR_PATH, pathToRecordDiff),
+    path.join(outputPath, pathToRecordDiff),
     resultDiff
       .map(([type, value]) => {
         if (type === 0) {
