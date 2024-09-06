@@ -12,21 +12,24 @@ import {
   startRecording,
   stopRecording,
 } from "./recorder";
+import { generateResultHTML, Result } from "./result";
+
+const OUTPUT_DIR_PATH = path.join(process.cwd(), "fuzz");
 
 export async function fuzz(_options: UserOptions) {
   const options = getMergedOptions(_options);
 
-  console.log("generate fuzz data👶");
+  console.log("--- generate fuzz data👶 ---");
   const dataDir = generateData(options.dataNum);
 
-  console.log("setup browser🌐");
+  console.log("--- setup browser🌐 ---");
   const page = await createBrowserPage(options.browserOptions);
 
-  console.log("validate test cases🔍");
+  console.log("--- validate test cases🔍 ---");
   const caseProfiles = await validateCases(dataDir, page);
 
-  console.log("run test cases🏃");
-  await run(
+  console.log("--- run test cases🏃 ---");
+  const results = await run(
     options.pathToScriptFile,
     dataDir,
     page,
@@ -35,10 +38,14 @@ export async function fuzz(_options: UserOptions) {
     caseProfiles
   );
 
-  console.log("done. closing browser👋");
+  console.log("--- done! close browser👋 ---");
   await page.close();
   await page.context().close();
   await page.context().browser()?.close();
+
+  console.log("--- generate result📝 ---");
+  const resultPath = generateResultHTML(results, OUTPUT_DIR_PATH);
+  console.log("result: ", resultPath);
 }
 
 declare global {
@@ -115,10 +122,11 @@ async function run(
   scenario: (page: Page) => Promise<void>,
   performanceThreshold: number,
   caseProfiles: Map<string, CaseProfile>
-) {
+): Promise<Result[]> {
   const files = fs.readdirSync(dataDir);
+  console.log("test cases:\n", files.join("\n"));
 
-  console.log("test cases: ", files.join("\n"));
+  const results: Result[] = [];
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
@@ -153,20 +161,26 @@ async function run(
         throw new Error(`cannot find profile for ${file}`);
       }
 
+      let paths = {};
       const isRecordsDifferent = compareRecords(
         caseProfile.records,
         recordsWithScript
       );
       if (isRecordsDifferent) {
         console.log(`\tresult: ❌ found side effect`);
-        writeResultToFile(
+        paths = writeResultToFile(
           i.toString(),
           JSON.stringify(caseProfile.records),
           JSON.stringify(recordsWithScript)
         );
       }
 
-      const { isOverStdDev, isOverThreshold } = checkDurations(
+      const {
+        averageWithoutScript,
+        stdDevWithoutScript,
+        isOverStdDev,
+        isOverThreshold,
+      } = checkDurations(
         caseProfile.durations,
         durationWithScript,
         performanceThreshold
@@ -182,10 +196,29 @@ async function run(
           `\tresult: 🟢 found neither side effect nor performance issue`
         );
       }
+
+      results.push({
+        pathToFile: file,
+        // @ts-expect-error: fix type
+        record: {
+          isDifferent: isRecordsDifferent,
+          ...paths,
+        },
+        duration: {
+          durationAve: averageWithoutScript,
+          durationStdDev: stdDevWithoutScript,
+          durationThreshold: performanceThreshold,
+          durationWithScript,
+          isOverStdDev,
+          isOverThreshold,
+        },
+      });
     } catch (e) {
       console.log(`\terror: ${e}`);
     }
   }
+
+  return results;
 }
 
 function compareRecords(
@@ -251,7 +284,12 @@ function checkDurations(
   console.log("stdDev: ", stdDevWithoutScript);
   console.log("duration w/script: ", durationWithScript);
 
-  return { isOverStdDev, isOverThreshold };
+  return {
+    averageWithoutScript,
+    stdDevWithoutScript,
+    isOverStdDev,
+    isOverThreshold,
+  };
 }
 
 function writeResultToFile(
@@ -259,19 +297,22 @@ function writeResultToFile(
   resultWithoutScript: string,
   resultWithScript: string
 ) {
-  const outputDirPath = path.join(process.cwd(), "fuzz");
-
+  const pathToRecordWithoutScript = `${filePrefix}-without-script.txt`;
   fs.writeFileSync(
-    path.join(outputDirPath, `${filePrefix}-without-script.txt`),
+    path.join(OUTPUT_DIR_PATH, pathToRecordWithoutScript),
     resultWithoutScript.replaceAll(`"},{"name`, `"},\n{"name`)
   );
+
+  const pathToRecordWithScript = `${filePrefix}-with-script.txt`;
   fs.writeFileSync(
-    path.join(outputDirPath, `${filePrefix}-with-script.txt`),
+    path.join(OUTPUT_DIR_PATH, pathToRecordWithScript),
     resultWithScript.replaceAll(`"},{"name`, `"},\n{"name`)
   );
+
+  const pathToRecordDiff = `${filePrefix}-resultDiff.txt`;
   const resultDiff = diff(resultWithoutScript, resultWithScript);
   fs.writeFileSync(
-    path.join(outputDirPath, `${filePrefix}-resultDiff.txt`),
+    path.join(OUTPUT_DIR_PATH, pathToRecordDiff),
     resultDiff
       .map(([type, value]) => {
         if (type === 0) {
@@ -284,4 +325,10 @@ function writeResultToFile(
       })
       .join("")
   );
+
+  return {
+    pathToRecordWithScript,
+    pathToRecordWithoutScript,
+    pathToRecordDiff,
+  };
 }
