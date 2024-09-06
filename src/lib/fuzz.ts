@@ -1,42 +1,31 @@
-import { BrowserContextOptions, LaunchOptions, Page } from "@playwright/test";
+import { Page } from "@playwright/test";
+import diff from "fast-diff";
 import fs from "fs";
 import path from "path";
-import { generateData, runScript } from "./generator";
 import { createBrowserPage } from "./browser";
+import { generateData, runScript } from "./generator";
+import { getMergedOptions, UserOptions } from "./options";
 import {
   getRecords,
   makeAllFunctionRecorded,
   startRecording,
   stopRecording,
 } from "./recorder";
-import diff from "fast-diff";
 
-export async function fuzz(
-  pathToScriptFile: string,
-  scenario: (page: Page) => Promise<void> = () => {
-    return new Promise<void>((resolve) => {
-      resolve();
-    });
-  },
-  dataNum: number = 20,
-  browserOptions: {
-    launchOptions?: LaunchOptions;
-    contextOptions?: BrowserContextOptions;
-  } = {
-    launchOptions: { headless: false },
-  }
-) {
+export async function fuzz(_options: UserOptions) {
+  const options = getMergedOptions(_options);
+
   console.log("generate fuzz data👶");
-  const dataDir = generateData(dataNum);
+  const dataDir = generateData(options.dataNum);
 
   console.log("setup browser🌐");
-  const page = await createBrowserPage(browserOptions);
+  const page = await createBrowserPage(options.browserOptions);
 
   console.log("validate test cases🔍");
   await removeInvalidCases(dataDir, page);
 
   console.log("run test cases🏃");
-  await run(pathToScriptFile, dataDir, page, scenario);
+  await run(options.pathToScriptFile, dataDir, page, options.scenario);
 
   console.log("done. closing browser👋");
   await page.close();
