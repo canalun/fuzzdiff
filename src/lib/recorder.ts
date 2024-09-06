@@ -10,19 +10,27 @@ declare global {
   interface Window {
     __fuzzdiff__apiRecords: ApiRecord[];
     __fuzzdiff__isRecorded: boolean;
+    __fuzzdiff__startTime: number;
+    __fuzzdiff__endTime: number;
   }
 }
 
 export function startRecording() {
+  window.__fuzzdiff__startTime = performance.now();
   window.__fuzzdiff__isRecorded = true;
 }
 
 export function stopRecording() {
   window.__fuzzdiff__isRecorded = false;
+  window.__fuzzdiff__endTime = performance.now();
 }
 
 export function getAPIRecords() {
   return window.__fuzzdiff__apiRecords;
+}
+
+export function getDuration() {
+  return window.__fuzzdiff__endTime - window.__fuzzdiff__startTime;
 }
 
 export function makeAllFunctionRecorded() {

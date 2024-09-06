@@ -7,6 +7,11 @@ type Options = {
    * The default value is 20.
    */
   dataNum: number;
+  /**
+   * The default value is 0.2,
+   * that means the test checks if the time increases by more than 20%.
+   */
+  performanceThreshold: number;
   browserOptions: {
     /**
      * `headless` is FALSE by default.
@@ -21,12 +26,13 @@ export type UserOptions = Partial<Options> & {
 };
 
 const defaultOptions: PickAndRequireOptionalProps<UserOptions> = {
-  dataNum: 20,
   scenario: () => {
     return new Promise<void>((resolve) => {
       resolve();
     });
   },
+  dataNum: 20,
+  performanceThreshold: 0.2,
   browserOptions: {
     launchOptions: {
       headless: false,
