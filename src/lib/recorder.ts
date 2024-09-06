@@ -8,21 +8,21 @@ type ApiRecord = {
 
 declare global {
   interface Window {
-    apiRecords: ApiRecord[];
-    isRecorded: boolean;
+    __fuzzdiff__apiRecords: ApiRecord[];
+    __fuzzdiff__isRecorded: boolean;
   }
 }
 
 export function startRecording() {
-  window.isRecorded = true;
+  window.__fuzzdiff__isRecorded = true;
 }
 
 export function stopRecording() {
-  window.isRecorded = false;
+  window.__fuzzdiff__isRecorded = false;
 }
 
-export function getRecords() {
-  return window.apiRecords;
+export function getAPIRecords() {
+  return window.__fuzzdiff__apiRecords;
 }
 
 export function makeAllFunctionRecorded() {
@@ -7727,11 +7727,11 @@ export function makeAllFunctionRecorded() {
 
   ///////
 
-  window.apiRecords = [];
+  window.__fuzzdiff__apiRecords = [];
 
   // The recording starts when you set it as true.
   // Otherwise, the process in this file would be also recorded.
-  window.isRecorded = false;
+  window.__fuzzdiff__isRecorded = false;
 
   for (const name of changeableBuiltInNames) {
     let target = window;
@@ -7764,7 +7764,7 @@ export function makeAllFunctionRecorded() {
                 thisArg,
                 argumentsList
               );
-              if (window["isRecorded"]) {
+              if (window["__fuzzdiff__isRecorded"]) {
                 let args = "";
                 try {
                   args = JSON.stringify(argumentsList);
@@ -7777,7 +7777,7 @@ export function makeAllFunctionRecorded() {
                 } catch {
                   result = "*****************";
                 }
-                window["apiRecords"].push({
+                window["__fuzzdiff__apiRecords"].push({
                   name,
                   argumentsList: args,
                   result,
@@ -7793,5 +7793,5 @@ export function makeAllFunctionRecorded() {
     }
   }
 
-  window.isRecorded = true;
+  window.__fuzzdiff__isRecorded = true;
 }

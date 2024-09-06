@@ -6,7 +6,7 @@ import { createBrowserPage } from "./browser";
 import { generateData, runScript } from "./generator";
 import { getMergedOptions, UserOptions } from "./options";
 import {
-  getRecords,
+  getAPIRecords,
   makeAllFunctionRecorded,
   startRecording,
   stopRecording,
@@ -74,8 +74,8 @@ async function goThrough(dataDir: string, file: string, page: Page) {
   await page.evaluate(`(${startRecording.toString()})()`);
   await page.evaluate(`(${runScript.toString()})()`);
   await page.evaluate(`(${stopRecording.toString()})()`);
-  const records = await page.evaluate<ReturnType<typeof getRecords>>(
-    `(${getRecords.toString()})()`,
+  const records = await page.evaluate<ReturnType<typeof getAPIRecords>>(
+    `(${getAPIRecords.toString()})()`,
     { timeout: TIMEOUT }
   );
   return records;
@@ -106,8 +106,8 @@ async function run(
       await page.evaluate(`(${stopRecording.toString()})()`);
 
       const recordsWithoutScript = await page.evaluate<
-        ReturnType<typeof getRecords>
-      >(`(${getRecords.toString()})()`, { timeout: TIMEOUT });
+        ReturnType<typeof getAPIRecords>
+      >(`(${getAPIRecords.toString()})()`, { timeout: TIMEOUT });
 
       // run with script
       await page.goto("file://" + path.resolve(dataDir, files[i]), {
@@ -126,8 +126,8 @@ async function run(
       await page.evaluate(`(${stopRecording.toString()})()`);
 
       const recordsWithScript = await page.evaluate<
-        ReturnType<typeof getRecords>
-      >(`(${getRecords.toString()})()`, { timeout: TIMEOUT });
+        ReturnType<typeof getAPIRecords>
+      >(`(${getAPIRecords.toString()})()`, { timeout: TIMEOUT });
 
       // When running the fuzzed script with the tested script,
       // the process of initializing the tested one occurs.
