@@ -294,19 +294,27 @@ function checkDurations(
 function writeResultToFile(
   outputPath: string,
   filePrefix: string,
-  resultWithoutScript: string,
-  resultWithScript: string
+  _resultWithoutScript: string,
+  _resultWithScript: string
 ) {
   const pathToRecordWithoutScript = `${filePrefix}-without-script.txt`;
+  const resultWithoutScript = _resultWithoutScript.replaceAll(
+    `"},{"name`,
+    `"},\n{"name`
+  );
   fs.writeFileSync(
     path.join(outputPath, pathToRecordWithoutScript),
-    resultWithoutScript.replaceAll(`"},{"name`, `"},\n{"name`)
+    resultWithoutScript
   );
 
   const pathToRecordWithScript = `${filePrefix}-with-script.txt`;
+  const resultWithScript = _resultWithScript.replaceAll(
+    `"},{"name`,
+    `"},\n{"name`
+  );
   fs.writeFileSync(
     path.join(outputPath, pathToRecordWithScript),
-    resultWithScript.replaceAll(`"},{"name`, `"},\n{"name`)
+    resultWithScript
   );
 
   const pathToRecordDiff = `${filePrefix}-resultDiff.txt`;
