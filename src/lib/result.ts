@@ -110,7 +110,7 @@ function generateTableHTML(results: Result[]) {
 
 function generateRecordsCells(recordResult: Result["record"]) {
   if (recordResult.isDifferent) {
-    return `<td><a href="${recordResult.pathToRecordDiff}">Link</a></td>
+    return `<td style="background-color: red;"><a href="${recordResult.pathToRecordDiff}">Link</a></td>
             <td><a href="${recordResult.pathToRecordWithoutScript}">Link</a></td>
             <td><a href="${recordResult.pathToRecordWithScript}">Link</a></td>`;
   } else {
