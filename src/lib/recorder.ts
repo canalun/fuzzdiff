@@ -7737,8 +7737,8 @@ export function makeAllFunctionRecorded() {
 
   window.__fuzzdiff__apiRecords = [];
 
-  // The recording starts when you set it as true.
-  // Otherwise, the process in this file would be also recorded.
+  // The recording starts when you set the flag to true.
+  // So set the flag to false here, otherwise the process in this file would be also recorded.
   window.__fuzzdiff__isRecorded = false;
 
   for (const name of changeableBuiltInNames) {
