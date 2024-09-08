@@ -1,6 +1,6 @@
 // https://gist.github.com/canalun/0713a64cf95ada95ed6cffda21069aef
 
-type ApiRecord = {
+export type ApiRecord = {
   name: string;
   argumentsList: string;
   boundThis: string;
@@ -16,22 +16,17 @@ declare global {
   }
 }
 
-export function startRecording() {
+export function runAndRecordScript() {
   window.__fuzzdiff__startTime = performance.now();
   window.__fuzzdiff__isRecorded = true;
-}
-
-export function stopRecording() {
+  window.jsfuzzer();
   window.__fuzzdiff__isRecorded = false;
   window.__fuzzdiff__endTime = performance.now();
-}
 
-export function getAPIRecords() {
-  return window.__fuzzdiff__apiRecords;
-}
-
-export function getDuration() {
-  return window.__fuzzdiff__endTime - window.__fuzzdiff__startTime;
+  return {
+    records: window.__fuzzdiff__apiRecords,
+    duration: window.__fuzzdiff__endTime - window.__fuzzdiff__startTime,
+  };
 }
 
 // TODO: remove comment-outs that is for avoiding infinite loop,

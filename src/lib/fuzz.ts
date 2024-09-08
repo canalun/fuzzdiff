@@ -3,14 +3,12 @@ import { diffLines } from "diff";
 import fs from "fs";
 import path from "path";
 import { createBrowserContext } from "./browser";
-import { generateData, runScript } from "./generator";
+import { generateData } from "./generator";
 import { getMergedOptions, UserOptions } from "./options";
 import {
-  getAPIRecords,
-  getDuration,
+  ApiRecord,
   makeAllFunctionRecorded,
-  startRecording,
-  stopRecording,
+  runAndRecordScript,
 } from "./recorder";
 import { generateResultHTML, Result } from "./result";
 
@@ -50,16 +48,9 @@ export async function fuzz(_options: UserOptions) {
   console.log("result: ", resultPath);
 }
 
-declare global {
-  interface Window {
-    // please see domato template.html
-    jsfuzzer: () => void;
-  }
-}
-
 type CaseProfile = {
   durations: number[];
-  records: ReturnType<typeof getAPIRecords>;
+  records: ApiRecord[];
 };
 
 const TIMEOUT = 2000;
@@ -128,25 +119,21 @@ async function goThrough(pathToFile: string, browserContext: BrowserContext) {
     timeout: TIMEOUT,
     waitUntil: "load",
   });
+
   await page.evaluate(`(${makeAllFunctionRecorded.toString()})()`, {
     timeout: TIMEOUT,
   });
-  await page.evaluate(`(${startRecording.toString()})()`, { timeout: TIMEOUT });
-  await page.evaluate(`(${runScript.toString()})()`, { timeout: TIMEOUT });
-  await page.evaluate(`(${stopRecording.toString()})()`, { timeout: TIMEOUT });
 
-  const records = await page.evaluate<ReturnType<typeof getAPIRecords>>(
-    `(${getAPIRecords.toString()})()`,
-    { timeout: TIMEOUT }
-  );
-  const duration = await page.evaluate<number>(
-    `(${getDuration.toString()})()`,
-    { timeout: TIMEOUT }
+  const result = await page.evaluate<ReturnType<typeof runAndRecordScript>>(
+    `(${runAndRecordScript.toString()})()`,
+    {
+      timeout: TIMEOUT,
+    }
   );
 
   await page.close();
 
-  return { records, duration };
+  return result;
 }
 
 async function run(
@@ -221,16 +208,10 @@ async function runFile(
     await scenario(page);
 
     await page.evaluate(`(${makeAllFunctionRecorded.toString()})()`);
-    await page.evaluate(`(${startRecording.toString()})()`);
-    await page.evaluate(`(${runScript.toString()})()`);
-    await page.evaluate(`(${stopRecording.toString()})()`);
-
-    const recordsWithScript = await page.evaluate<
-      ReturnType<typeof getAPIRecords>
-    >(`(${getAPIRecords.toString()})()`);
-    const durationWithScript = await page.evaluate<number>(
-      `(${getDuration.toString()})()`
-    );
+    const { records: recordsWithScript, duration: durationWithScript } =
+      await page.evaluate<ReturnType<typeof runAndRecordScript>>(
+        `(${runAndRecordScript.toString()})()`
+      );
 
     const caseProfile = caseProfiles.get(file);
     if (!caseProfile) {
@@ -296,8 +277,8 @@ async function runFile(
 }
 
 function compareRecords(
-  recordsWithoutScript: ReturnType<typeof getAPIRecords>,
-  recordsWithScript: ReturnType<typeof getAPIRecords>
+  recordsWithoutScript: ApiRecord[],
+  recordsWithScript: ApiRecord[]
 ) {
   // When running the fuzzed script with the tested script,
   // the process of initializing the tested one occurs.
