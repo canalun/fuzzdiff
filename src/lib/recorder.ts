@@ -620,8 +620,7 @@ export function makeAllFunctionRecorded() {
     "globalThis.console.debug",
     "globalThis.console.error",
     "globalThis.console.info",
-    // TODO: Override `console.log` after fuzzing gets stable.
-    // "globalThis.console.log",
+    "globalThis.console.log",
     "globalThis.console.warn",
     "globalThis.console.dir",
     "globalThis.console.dirxml",
