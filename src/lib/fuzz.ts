@@ -72,6 +72,7 @@ async function validateCases(
   const caseProfiles = new Map<string, CaseProfile>();
 
   const files = fs.readdirSync(dataDir);
+  // TODO: tabs sometime not respond and the promise never resolves.
   if (isParallelEnabled) {
     await Promise.allSettled(
       files.map((file) =>
