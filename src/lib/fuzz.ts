@@ -168,7 +168,7 @@ async function run(
         console.log(`\tresult: ❌ found side effect`);
         paths = writeResultToFile(
           dataDir,
-          i.toString(),
+          file.replace(".html", ""),
           JSON.stringify(caseProfile.records),
           JSON.stringify(recordsWithScript)
         );
