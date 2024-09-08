@@ -63,7 +63,7 @@ async function validateCases(dataDir: string, browserContext: BrowserContext) {
   const caseProfiles = new Map<string, CaseProfile>();
 
   const files = fs.readdirSync(dataDir);
-  // TODO: parallelize
+  // TODO: fix bug of parallelization
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     console.log(`validate case: ${file}`);

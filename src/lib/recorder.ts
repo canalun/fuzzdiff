@@ -7850,9 +7850,10 @@ export function makeAllFunctionRecorded() {
     return;
   }
 
-  // TODO:
-  // Don't use any unbound functions in this function,
+  // Don't use any overridden functions in this function,
   // otherwise they causes infinite loops.
+  // Now, you have to comment out the function name in the list above
+  // when you wanna use the function here.
   function createProxyHandler(name: string): {
     apply(target: any, thisArg: any, argumentsList: any): unknown;
   } {
@@ -7867,9 +7868,10 @@ export function makeAllFunctionRecorded() {
     };
   }
 
-  // TODO:
-  // Don't use any unbound functions in this function,
+  // Don't use any overridden functions in this function,
   // otherwise they causes infinite loops.
+  // Now, you have to comment out the function name in the list above
+  // when you wanna use the function here.
   function addRecord(
     name: string,
     argsList: unknown[],
