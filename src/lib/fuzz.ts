@@ -1,5 +1,5 @@
 import { BrowserContext, Page } from "@playwright/test";
-import diff from "fast-diff";
+import { diffLines } from "diff";
 import fs from "fs";
 import path from "path";
 import { createBrowserContext } from "./browser";
@@ -72,7 +72,6 @@ async function validateCases(
   const caseProfiles = new Map<string, CaseProfile>();
 
   const files = fs.readdirSync(dataDir);
-  // TODO: tabs sometime not respond and the promise never resolves.
   if (isParallelEnabled) {
     await Promise.allSettled(
       files.map((file) =>
@@ -394,17 +393,17 @@ function writeResultToFile(
   );
 
   const pathToRecordDiff = `${filePrefix}-resultDiff.txt`;
-  const resultDiff = diff(resultWithoutScript, resultWithScript);
+  const resultDiff = diffLines(resultWithoutScript, resultWithScript);
   fs.writeFileSync(
     path.join(outputPath, pathToRecordDiff),
     resultDiff
-      .map(([type, value]) => {
-        if (type === 0) {
-          return value;
-        } else if (type === 1) {
-          return `\n\n\n\n\n\n+${value}\n\n\n\n\n\n`;
-        } else if (type === -1) {
-          return `\n\n\n\n\n\n-${value}\n\n\n\n\n\n`;
+      .map(({ value, added, removed }) => {
+        if (added) {
+          return `\n\n\n\n\n\n+++\t${value}\n\n\n\n\n\n`;
+        } else if (removed) {
+          return `\n\n\n\n\n\n---\t${value}\n\n\n\n\n\n`;
+        } else {
+          return `${value}\n`;
         }
       })
       .join("")

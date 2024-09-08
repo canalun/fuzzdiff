@@ -9,6 +9,11 @@
   dependencies:
     playwright "1.45.1"
 
+"@types/diff@^5.2.2":
+  version "5.2.2"
+  resolved "https://registry.yarnpkg.com/@types/diff/-/diff-5.2.2.tgz#d430dbb1da6739f1e2565c2c80b54184d4c77658"
+  integrity sha512-qVqLpd49rmJA2nZzLVsmfS/aiiBpfVE95dHhPVwG0NmSBAt+riPxnj53wq2oBq5m4Q2RF1IWFEUpnZTgrQZfEQ==
+
 "@types/node@^22.5.3":
   version "22.5.3"
   resolved "https://registry.yarnpkg.com/@types/node/-/node-22.5.3.tgz#91a374e42c6e7ccb5893a87f1775f36ce1671d65"
@@ -16,10 +21,10 @@
   dependencies:
     undici-types "~6.19.2"
 
-fast-diff@^1.3.0:
-  version "1.3.0"
-  resolved "https://registry.yarnpkg.com/fast-diff/-/fast-diff-1.3.0.tgz#ece407fa550a64d638536cd727e129c61616e0f0"
-  integrity sha512-VxPP4NqbUjj6MaAOafWeUn2cXWLcCtljklUtZf0Ind4XQ+QPtmA0b18zZy0jIQx+ExRVCR/ZQpBmik5lXshNsw==
+diff@^7.0.0:
+  version "7.0.0"
+  resolved "https://registry.yarnpkg.com/diff/-/diff-7.0.0.tgz#3fb34d387cd76d803f6eebea67b921dab0182a9a"
+  integrity sha512-PJWHUb1RFevKCwaFA9RlG5tCd+FO5iRh9A8HEtkmBH2Li03iJriB6m6JIN4rGz3K3JLawI7/veA1xzRKP6ISBw==
 
 fsevents@2.3.2:
   version "2.3.2"
