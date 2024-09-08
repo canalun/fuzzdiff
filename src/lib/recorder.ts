@@ -3,6 +3,7 @@
 type ApiRecord = {
   name: string;
   argumentsList: string;
+  boundThis: string;
   result: string;
 };
 
@@ -33,10 +34,19 @@ export function getDuration() {
   return window.__fuzzdiff__endTime - window.__fuzzdiff__startTime;
 }
 
+// TODO: remove comment-outs that is for avoiding infinite loop,
+//       by storing original prototypes and using them in the function, `override`.
+//       `Uncurrythis` in core-js will be a nice reference.
 export function makeAllFunctionRecorded() {
+  /////////////////////////////////////////////////////////////////////////
+  // Here is the definition of const for the main part.
+
+  const changeableBuiltInNames: string[] = [
+    "globalThis.Object.prototype.toString",
+  ];
   // `changeableBuiltInNames` has to be defined in the same scope as the function
   // to be used in playwright browser context.
-  const changeableBuiltInNames = [
+  const _changeableBuiltInNames = [
     // ref: https://gist.github.com/canalun/67164839b74ca810e6c549d6646c6cfd
     "globalThis.Object",
     "globalThis.Object.prototype.__defineGetter__",
@@ -51,17 +61,20 @@ export function makeAllFunctionRecorded() {
     "globalThis.Object.prototype.__proto__",
     "globalThis.Object.prototype.toLocaleString",
     "globalThis.Object.assign",
-    "globalThis.Object.getOwnPropertyDescriptor",
-    "globalThis.Object.getOwnPropertyDescriptors",
+    // avoid infinite loop
+    // "globalThis.Object.getOwnPropertyDescriptor",
+    // "globalThis.Object.getOwnPropertyDescriptors",
     "globalThis.Object.getOwnPropertyNames",
     "globalThis.Object.getOwnPropertySymbols",
-    "globalThis.Object.hasOwn",
+    // avoid infinite loop
+    // "globalThis.Object.hasOwn",
     "globalThis.Object.is",
     "globalThis.Object.preventExtensions",
     "globalThis.Object.seal",
     "globalThis.Object.create",
     "globalThis.Object.defineProperties",
-    "globalThis.Object.defineProperty",
+    // avoid infinite loop
+    // "globalThis.Object.defineProperty",
     "globalThis.Object.freeze",
     "globalThis.Object.getPrototypeOf",
     "globalThis.Object.setPrototypeOf",
@@ -82,7 +95,8 @@ export function makeAllFunctionRecorded() {
     "globalThis.Function.prototype.call",
     "globalThis.Function.prototype.toString",
     "globalThis.Array",
-    "globalThis.Array.prototype.at",
+    // these cannot be used under strict mode
+    // "globalThis.Array.prototype.at",
     "globalThis.Array.prototype.concat",
     "globalThis.Array.prototype.copyWithin",
     "globalThis.Array.prototype.fill",
@@ -177,7 +191,8 @@ export function makeAllFunctionRecorded() {
     "globalThis.String.prototype.search",
     "globalThis.String.prototype.slice",
     "globalThis.String.prototype.small",
-    "globalThis.String.prototype.split",
+    // avoid infinite loop
+    // "globalThis.String.prototype.split",
     "globalThis.String.prototype.strike",
     "globalThis.String.prototype.sub",
     "globalThis.String.prototype.substr",
@@ -569,7 +584,8 @@ export function makeAllFunctionRecorded() {
     "globalThis.WeakSet.prototype.has",
     "globalThis.WeakSet.prototype.add",
     "globalThis.WeakSet.prototype.Symbol(Symbol.toStringTag)",
-    "globalThis.Proxy",
+    // avoid infinite loop
+    // "globalThis.Proxy",
     "globalThis.Proxy.revocable",
     "globalThis.Reflect",
     "globalThis.Reflect.defineProperty",
@@ -7733,7 +7749,162 @@ export function makeAllFunctionRecorded() {
     "globalThis.$x.toString",
   ];
 
-  ///////
+  /////////////////////////////////////////////////////////////////////////
+  // Here is the helper for the main part.
+
+  // `override` has to be defined in the same scope as the function
+  // to be used in playwright browser context.
+  // TODO: add test to check if `override` overrides all the prototypes.
+  function override(name: string) {
+    const boundThis = getBoundThis(name);
+    const propKey = name.split(".").at(-1)!;
+    const originalPrototype = getOriginalPrototype(boundThis, propKey);
+    if (!originalPrototype) {
+      return;
+    }
+
+    const handler = createProxyHandler(name);
+    _override(originalPrototype, propKey, handler);
+
+    return;
+  }
+
+  function getBoundThis(name: string) {
+    const path = name.split(".");
+
+    let boundThis = globalThis;
+    for (let i = 0; i < path.length - 1; i++) {
+      try {
+        // @ts-expect-error
+        boundThis = boundThis[path[i]];
+      } catch (e) {
+        // @ts-expect-error
+        boundThis = null;
+        break;
+      }
+    }
+
+    return boundThis;
+  }
+
+  function getOriginalPrototype(boundThis: object, propKey: string) {
+    // Use `=== null` not `=== false`,
+    // because `boundThis` can be an object that is strangely falsy.
+    // For example, `boundThis` for `document.all.length` is an instance of `HTMLAllCollection`.
+    if (boundThis === null || boundThis === void 0) {
+      return;
+    }
+
+    let originalPrototype = boundThis;
+    while (
+      originalPrototype instanceof Object &&
+      !Object.hasOwn(originalPrototype, propKey)
+    ) {
+      // @ts-expect-error
+      originalPrototype = originalPrototype.__proto__;
+    }
+    if (
+      originalPrototype !== null &&
+      originalPrototype !== void 0 &&
+      Object.hasOwn(originalPrototype, propKey)
+    ) {
+      return originalPrototype;
+    } else {
+      return null;
+    }
+  }
+
+  function _override(
+    originalPrototype: object,
+    propKey: string,
+    handler: {
+      apply(target: any, thisArg: any, argumentsList: any): unknown;
+    }
+  ) {
+    const desc = Object.getOwnPropertyDescriptor(originalPrototype, propKey);
+    if (desc === null || desc === void 0) {
+      return; // Unexpected.
+    }
+
+    // Property descriptors are of two kinds.
+    // https://262.ecma-international.org/15.0/index.html?_gl=1*1n9j7ka*_ga*ODUwMDQyMzQ2LjE3MjIwOTkzOTg.*_ga_TDCK4DWEPP*MTcyMjA5OTM5OC4xLjAuMTcyMjA5OTM5OC4wLjAuMA..#table-object-property-attributes
+    if ("value" in desc) {
+      // data property case
+      Object.defineProperty(originalPrototype, propKey, {
+        ...desc,
+        value: new Proxy(desc.value, handler),
+      });
+    } else if ("get" in desc) {
+      // accessor property case
+      Object.defineProperty(originalPrototype, propKey, {
+        ...desc,
+        get: desc.get ? new Proxy(desc.get, handler) : void 0,
+        set: desc.set ? new Proxy(desc.set, handler) : void 0,
+      });
+    }
+    return;
+  }
+
+  // TODO:
+  // Don't use any unbound functions in this function,
+  // otherwise they causes infinite loops.
+  function createProxyHandler(name: string): {
+    apply(target: any, thisArg: any, argumentsList: any): unknown;
+  } {
+    return {
+      apply(target, thisArg, argumentsList) {
+        const result = Reflect.apply(target, thisArg, argumentsList);
+        addRecord(name, argumentsList, thisArg, result);
+        return result;
+      },
+    };
+  }
+
+  // TODO:
+  // Don't use any unbound functions in this function,
+  // otherwise they causes infinite loops.
+  function addRecord(
+    name: string,
+    argsList: unknown[],
+    _boundThis: unknown,
+    _result: unknown
+  ) {
+    let args: string[] = [];
+    for (const _arg of argsList) {
+      let arg = "";
+      try {
+        // TODO: is this right?
+        arg = _arg instanceof Object ? JSON.stringify(_arg) : `${_arg}`;
+      } catch {
+        arg = "*** CANNOT BE STRINGIFIED ***";
+      }
+      args.push(arg);
+    }
+
+    let boundThis: string = "";
+    try {
+      boundThis = !!_boundThis ? JSON.stringify(_boundThis) : "";
+    } catch {
+      boundThis = "*** CANNOT BE STRINGIFIED ***";
+    }
+
+    let result: string = "";
+    try {
+      result = !!_result ? JSON.stringify(_result) : "";
+    } catch {
+      result = "*** CANNOT BE STRINGIFIED ***";
+    }
+
+    window["__fuzzdiff__apiRecords"].push({
+      name,
+      argumentsList: JSON.stringify(args),
+      boundThis,
+      result,
+    });
+  }
+
+  /////////////////////////////////////////////////////////////////////////
+  // Here is the main part.
 
   window.__fuzzdiff__apiRecords = [];
 
@@ -7742,63 +7913,7 @@ export function makeAllFunctionRecorded() {
   window.__fuzzdiff__isRecorded = false;
 
   for (const name of changeableBuiltInNames) {
-    let target = window;
-    const path = name.split(".");
-
-    for (let i = 0; i < path.length; i++) {
-      if (i < path.length - 1) {
-        try {
-          // Some APIs such as `callee` throw when it's accessed.
-          // @ts-ignore
-          target = target[path[i]];
-        } catch {
-          break;
-        }
-      } else {
-        let original = null;
-        try {
-          // Some APIs such as `callee` throw when it's accessed.
-          // @ts-ignore
-          original = target[path[i]];
-        } catch {
-          break;
-        }
-        if (original instanceof Function) {
-          const originalFunction = original; // Keep a direct reference to the original function.
-          const handler: ProxyHandler<{}> = {
-            apply(_, thisArg, argumentsList) {
-              const result = Reflect.apply(
-                originalFunction,
-                thisArg,
-                argumentsList
-              );
-              if (window["__fuzzdiff__isRecorded"]) {
-                let args = "";
-                try {
-                  args = JSON.stringify(argumentsList);
-                } catch {
-                  args = "*****************";
-                }
-                let result = "";
-                try {
-                  result = JSON.stringify(result);
-                } catch {
-                  result = "*****************";
-                }
-                window["__fuzzdiff__apiRecords"].push({
-                  name,
-                  argumentsList: args,
-                  result,
-                });
-              }
-              return result;
-            },
-          };
-          // @ts-ignore
-          target[path[i]] = new Proxy(original, handler);
-        }
-      }
-    }
+    override(name);
   }
 
   window.__fuzzdiff__isRecorded = true;
