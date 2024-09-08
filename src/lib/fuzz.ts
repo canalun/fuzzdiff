@@ -1,8 +1,8 @@
-import { Page } from "@playwright/test";
+import { BrowserContext, Page } from "@playwright/test";
 import diff from "fast-diff";
 import fs from "fs";
 import path from "path";
-import { createBrowserPage } from "./browser";
+import { createBrowserContext } from "./browser";
 import { generateData, runScript } from "./generator";
 import { getMergedOptions, UserOptions } from "./options";
 import {
@@ -21,25 +21,24 @@ export async function fuzz(_options: UserOptions) {
   const outputPath = generateData(options.dataNum, options.outputPath);
 
   console.log("--- setup browser🌐 ---");
-  const page = await createBrowserPage(options.browserOptions);
+  const browserContext = await createBrowserContext(options.browserOptions);
 
   console.log("--- validate test cases🔍 ---");
-  const caseProfiles = await validateCases(outputPath, page);
+  const caseProfiles = await validateCases(outputPath, browserContext);
 
   console.log("--- run test cases🏃 ---");
   const results = await run(
     options.scriptFilePath,
     outputPath,
-    page,
+    browserContext,
     options.scenario,
     options.performanceThreshold,
     caseProfiles
   );
 
   console.log("--- done! close browser👋 ---");
-  await page.close();
-  await page.context().close();
-  await page.context().browser()?.close();
+  await browserContext.close();
+  await browserContext.browser()?.close();
 
   console.log("--- generate result📝 ---");
   const resultPath = generateResultHTML(results, outputPath);
@@ -60,7 +59,7 @@ type CaseProfile = {
 
 const TIMEOUT = 2000;
 const SAMPLE_NUM = 3;
-async function validateCases(dataDir: string, page: Page) {
+async function validateCases(dataDir: string, browserContext: BrowserContext) {
   const caseProfiles = new Map<string, CaseProfile>();
 
   const files = fs.readdirSync(dataDir);
@@ -72,7 +71,10 @@ async function validateCases(dataDir: string, page: Page) {
     const results = [];
     try {
       for (let i = 0; i < SAMPLE_NUM; i++) {
-        const result = await goThrough(path.resolve(dataDir, file), page);
+        const result = await goThrough(
+          path.resolve(dataDir, file),
+          browserContext
+        );
         if (i > 0 && compareRecords(results[i - 1].records, result.records)) {
           throw new Error("flaky case");
         }
@@ -93,7 +95,9 @@ async function validateCases(dataDir: string, page: Page) {
   return caseProfiles;
 }
 
-async function goThrough(pathToFile: string, page: Page) {
+async function goThrough(pathToFile: string, browserContext: BrowserContext) {
+  const page = await browserContext.newPage();
+
   await page.goto("file://" + pathToFile, {
     // It's necessary to set timeout in order to detect the page which is not responding.
     // Fuzzer sometimes generates such a page.
@@ -113,13 +117,16 @@ async function goThrough(pathToFile: string, page: Page) {
     `(${getDuration.toString()})()`,
     { timeout: TIMEOUT }
   );
+
+  await page.close();
+
   return { records, duration };
 }
 
 async function run(
   pathToScriptFile: string,
   dataDir: string,
-  page: Page,
+  browserContext: BrowserContext,
   scenario: (page: Page) => Promise<void>,
   performanceThreshold: number,
   caseProfiles: Map<string, CaseProfile>
@@ -132,6 +139,8 @@ async function run(
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     console.log("run test: ", file);
+
+    const page = await browserContext.newPage();
     try {
       // run with script
       await page.goto("file://" + path.resolve(dataDir, file), {
@@ -216,6 +225,7 @@ async function run(
     } catch (e) {
       console.log(`\terror: ${e}`);
     }
+    await page.close();
   }
 
   return results;
