@@ -41,12 +41,9 @@ export function makeAllFunctionRecorded() {
   /////////////////////////////////////////////////////////////////////////
   // Here is the definition of const for the main part.
 
-  const changeableBuiltInNames: string[] = [
-    "globalThis.Object.prototype.toString",
-  ];
   // `changeableBuiltInNames` has to be defined in the same scope as the function
   // to be used in playwright browser context.
-  const _changeableBuiltInNames = [
+  const changeableBuiltInNames = [
     // ref: https://gist.github.com/canalun/67164839b74ca810e6c549d6646c6cfd
     "globalThis.Object",
     "globalThis.Object.prototype.__defineGetter__",
@@ -623,7 +620,8 @@ export function makeAllFunctionRecorded() {
     "globalThis.console.debug",
     "globalThis.console.error",
     "globalThis.console.info",
-    "globalThis.console.log",
+    // TODO: Override `console.log` after fuzzing gets stable.
+    // "globalThis.console.log",
     "globalThis.console.warn",
     "globalThis.console.dir",
     "globalThis.console.dirxml",
@@ -700,7 +698,8 @@ export function makeAllFunctionRecorded() {
     "globalThis.webkitURL.prototype.searchParams",
     "globalThis.webkitURL.prototype.hash",
     "globalThis.webkitURL.prototype.href",
-    "globalThis.webkitURL.prototype.toJSON",
+    // TODO: resolve conflict with playwright (??)
+    // "globalThis.webkitURL.prototype.toJSON",
     "globalThis.webkitURL.prototype.toString",
     "globalThis.webkitURL.prototype.Symbol(Symbol.toStringTag)",
     "globalThis.webkitURL.canParse",
@@ -1463,7 +1462,8 @@ export function makeAllFunctionRecorded() {
     "globalThis.URL.prototype.searchParams",
     "globalThis.URL.prototype.hash",
     "globalThis.URL.prototype.href",
-    "globalThis.URL.prototype.toJSON",
+    // TODO: resolve conflict with playwright (??)
+    // "globalThis.URL.prototype.toJSON",
     "globalThis.URL.prototype.toString",
     "globalThis.URL.prototype.Symbol(Symbol.toStringTag)",
     "globalThis.URL.canParse",
@@ -3098,7 +3098,8 @@ export function makeAllFunctionRecorded() {
     "globalThis.PerformanceTiming.prototype.domComplete",
     "globalThis.PerformanceTiming.prototype.loadEventStart",
     "globalThis.PerformanceTiming.prototype.loadEventEnd",
-    "globalThis.PerformanceTiming.prototype.toJSON",
+    // TODO: resolve conflict with playwright (??)
+    // "globalThis.PerformanceTiming.prototype.toJSON",
     "globalThis.PerformanceTiming.prototype.Symbol(Symbol.toStringTag)",
     "globalThis.PerformanceServerTiming",
     "globalThis.PerformanceServerTiming.prototype.name",
@@ -3165,7 +3166,8 @@ export function makeAllFunctionRecorded() {
     "globalThis.PerformanceNavigation",
     "globalThis.PerformanceNavigation.prototype.type",
     "globalThis.PerformanceNavigation.prototype.redirectCount",
-    "globalThis.PerformanceNavigation.prototype.toJSON",
+    // TODO: resolve conflict with playwright (??)
+    // "globalThis.PerformanceNavigation.prototype.toJSON",
     "globalThis.PerformanceNavigation.prototype.Symbol(Symbol.toStringTag)",
     "globalThis.PerformanceMeasure",
     "globalThis.PerformanceMeasure.prototype.detail",
@@ -7830,10 +7832,13 @@ export function makeAllFunctionRecorded() {
     // https://262.ecma-international.org/15.0/index.html?_gl=1*1n9j7ka*_ga*ODUwMDQyMzQ2LjE3MjIwOTkzOTg.*_ga_TDCK4DWEPP*MTcyMjA5OTM5OC4xLjAuMTcyMjA5OTM5OC4wLjAuMA..#table-object-property-attributes
     if ("value" in desc) {
       // data property case
-      Object.defineProperty(originalPrototype, propKey, {
-        ...desc,
-        value: new Proxy(desc.value, handler),
-      });
+      // `desc.value` can be a primitive value, for example `globalThis.Error.prototype.name`.
+      if (typeof desc.value === "function" || typeof desc.value === "object") {
+        Object.defineProperty(originalPrototype, propKey, {
+          ...desc,
+          value: new Proxy(desc.value, handler),
+        });
+      }
     } else if ("get" in desc) {
       // accessor property case
       Object.defineProperty(originalPrototype, propKey, {
@@ -7854,7 +7859,9 @@ export function makeAllFunctionRecorded() {
     return {
       apply(target, thisArg, argumentsList) {
         const result = Reflect.apply(target, thisArg, argumentsList);
-        addRecord(name, argumentsList, thisArg, result);
+        if (window.__fuzzdiff__isRecorded) {
+          addRecord(name, argumentsList, thisArg, result);
+        }
         return result;
       },
     };
