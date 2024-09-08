@@ -23,6 +23,11 @@ type Options = {
     launchOptions: LaunchOptions;
     contextOptions: BrowserContextOptions;
   };
+  /**
+   * This affects the precision of the performance test.
+   * Set to `true` if you only care about the side effects of the script.
+   */
+  isParallelEnabled: boolean;
 };
 
 export type UserOptions = Partial<Options> & {
@@ -44,6 +49,7 @@ const defaultOptions: PickAndRequireOptionalProps<UserOptions> = {
     },
     contextOptions: {},
   },
+  isParallelEnabled: false,
 };
 
 export const getMergedOptions = (options: UserOptions): Options => {

@@ -24,7 +24,11 @@ export async function fuzz(_options: UserOptions) {
   const browserContext = await createBrowserContext(options.browserOptions);
 
   console.log("--- validate test cases🔍 ---");
-  const caseProfiles = await validateCases(outputPath, browserContext);
+  const caseProfiles = await validateCases(
+    outputPath,
+    browserContext,
+    options.isParallelEnabled
+  );
 
   console.log("--- run test cases🏃 ---");
   const results = await run(
@@ -33,7 +37,8 @@ export async function fuzz(_options: UserOptions) {
     browserContext,
     options.scenario,
     options.performanceThreshold,
-    caseProfiles
+    caseProfiles,
+    options.isParallelEnabled
   );
 
   console.log("--- done! close browser👋 ---");
@@ -59,40 +64,59 @@ type CaseProfile = {
 
 const TIMEOUT = 2000;
 const SAMPLE_NUM = 3;
-async function validateCases(dataDir: string, browserContext: BrowserContext) {
+async function validateCases(
+  dataDir: string,
+  browserContext: BrowserContext,
+  isParallelEnabled: boolean
+) {
   const caseProfiles = new Map<string, CaseProfile>();
 
   const files = fs.readdirSync(dataDir);
-  // TODO: fix bug of parallelization
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    console.log(`validate case: ${file}`);
-
-    const results = [];
-    try {
-      for (let i = 0; i < SAMPLE_NUM; i++) {
-        const result = await goThrough(
-          path.resolve(dataDir, file),
-          browserContext
-        );
-        if (i > 0 && compareRecords(results[i - 1].records, result.records)) {
-          throw new Error("flaky case");
-        }
-        results.push(result);
-      }
-
-      caseProfiles.set(file, {
-        records: results[0].records,
-        durations: results.map((r) => r.duration),
-      });
-    } catch (e) {
-      console.log(`remove invalid case: ${files[i]}`);
-      console.log(`\terror: ${e}`);
-      fs.unlinkSync(path.resolve(dataDir, files[i]));
+  if (isParallelEnabled) {
+    await Promise.allSettled(
+      files.map((file) =>
+        validateCase(file, dataDir, browserContext, caseProfiles)
+      )
+    );
+  } else {
+    for (let i = 0; i < files.length; i++) {
+      await validateCase(files[i], dataDir, browserContext, caseProfiles);
     }
   }
 
   return caseProfiles;
+}
+
+async function validateCase(
+  file: string,
+  dataDir: string,
+  browserContext: BrowserContext,
+  caseProfiles: Map<string, CaseProfile>
+) {
+  console.log(`validate case: ${file}`);
+
+  const results = [];
+  try {
+    for (let i = 0; i < SAMPLE_NUM; i++) {
+      const result = await goThrough(
+        path.resolve(dataDir, file),
+        browserContext
+      );
+      if (i > 0 && compareRecords(results[i - 1].records, result.records)) {
+        throw new Error("flaky case");
+      }
+      results.push(result);
+    }
+
+    caseProfiles.set(file, {
+      records: results[0].records,
+      durations: results.map((r) => r.duration),
+    });
+  } catch (e) {
+    console.log(`remove invalid case: ${file}`);
+    console.log(`\terror: ${e}`);
+    fs.unlinkSync(path.resolve(dataDir, file));
+  }
 }
 
 async function goThrough(pathToFile: string, browserContext: BrowserContext) {
@@ -104,10 +128,12 @@ async function goThrough(pathToFile: string, browserContext: BrowserContext) {
     timeout: TIMEOUT,
     waitUntil: "load",
   });
-  await page.evaluate(`(${makeAllFunctionRecorded.toString()})()`);
-  await page.evaluate(`(${startRecording.toString()})()`);
-  await page.evaluate(`(${runScript.toString()})()`);
-  await page.evaluate(`(${stopRecording.toString()})()`);
+  await page.evaluate(`(${makeAllFunctionRecorded.toString()})()`, {
+    timeout: TIMEOUT,
+  });
+  await page.evaluate(`(${startRecording.toString()})()`, { timeout: TIMEOUT });
+  await page.evaluate(`(${runScript.toString()})()`, { timeout: TIMEOUT });
+  await page.evaluate(`(${stopRecording.toString()})()`, { timeout: TIMEOUT });
 
   const records = await page.evaluate<ReturnType<typeof getAPIRecords>>(
     `(${getAPIRecords.toString()})()`,
@@ -129,106 +155,144 @@ async function run(
   browserContext: BrowserContext,
   scenario: (page: Page) => Promise<void>,
   performanceThreshold: number,
-  caseProfiles: Map<string, CaseProfile>
+  caseProfiles: Map<string, CaseProfile>,
+  isParallelEnabled: boolean
 ): Promise<Result[]> {
   const files = fs.readdirSync(dataDir);
   console.log("test cases:\n", files.join("\n"));
 
   const results: Result[] = [];
-
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    console.log("run test: ", file);
-
-    const page = await browserContext.newPage();
-    try {
-      // run with script
-      await page.goto("file://" + path.resolve(dataDir, file), {
-        waitUntil: "load",
-      });
-
-      await page.addScriptTag({
-        path: path.resolve(process.cwd(), pathToScriptFile),
-      });
-      await scenario(page);
-
-      await page.evaluate(`(${makeAllFunctionRecorded.toString()})()`);
-      await page.evaluate(`(${startRecording.toString()})()`);
-      await page.evaluate(`(${runScript.toString()})()`);
-      await page.evaluate(`(${stopRecording.toString()})()`);
-
-      const recordsWithScript = await page.evaluate<
-        ReturnType<typeof getAPIRecords>
-      >(`(${getAPIRecords.toString()})()`);
-      const durationWithScript = await page.evaluate<number>(
-        `(${getDuration.toString()})()`
-      );
-
-      const caseProfile = caseProfiles.get(file);
-      if (!caseProfile) {
-        throw new Error(`cannot find profile for ${file}`);
-      }
-
-      let paths = {};
-      const isRecordsDifferent = compareRecords(
-        caseProfile.records,
-        recordsWithScript
-      );
-      if (isRecordsDifferent) {
-        console.log(`\tresult: ❌ found side effect`);
-        paths = writeResultToFile(
+  if (isParallelEnabled) {
+    await Promise.allSettled(
+      files.map((file) =>
+        runFile(
+          file,
           dataDir,
-          file.replace(".html", ""),
-          JSON.stringify(caseProfile.records),
-          JSON.stringify(recordsWithScript)
-        );
-      }
-
-      const {
-        averageWithoutScript,
-        stdDevWithoutScript,
-        isOverStdDev,
-        isOverThreshold,
-      } = checkDurations(
-        caseProfile.durations,
-        durationWithScript,
-        performanceThreshold
+          path.resolve(process.cwd(), pathToScriptFile),
+          browserContext,
+          scenario,
+          performanceThreshold,
+          caseProfiles,
+          results
+        )
+      )
+    );
+  } else {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      await runFile(
+        file,
+        dataDir,
+        path.resolve(process.cwd(), pathToScriptFile),
+        browserContext,
+        scenario,
+        performanceThreshold,
+        caseProfiles,
+        results
       );
-      const isPerformanceAffectedSignificantly =
-        isOverStdDev || isOverThreshold;
-      if (isPerformanceAffectedSignificantly) {
-        console.log(`\tresult: ❌ found performance issue`);
-      }
-
-      if (!isRecordsDifferent && !isPerformanceAffectedSignificantly) {
-        console.log(
-          `\tresult: 🟢 found neither side effect nor performance issue`
-        );
-      }
-
-      results.push({
-        pathToFile: file,
-        // @ts-expect-error: fix type
-        record: {
-          isDifferent: isRecordsDifferent,
-          ...paths,
-        },
-        duration: {
-          durationAve: averageWithoutScript,
-          durationStdDev: stdDevWithoutScript,
-          durationThreshold: performanceThreshold,
-          durationWithScript,
-          isOverStdDev,
-          isOverThreshold,
-        },
-      });
-    } catch (e) {
-      console.log(`\terror: ${e}`);
     }
-    await page.close();
   }
 
   return results;
+}
+
+async function runFile(
+  file: string,
+  dataDir: string,
+  pathToScriptFile: string,
+  browserContext: BrowserContext,
+  scenario: (page: Page) => Promise<void>,
+  performanceThreshold: number,
+  caseProfiles: Map<string, CaseProfile>,
+  results: Result[]
+) {
+  console.log("run test: ", file);
+
+  const page = await browserContext.newPage();
+  try {
+    // run with script
+    await page.goto("file://" + path.resolve(dataDir, file), {
+      waitUntil: "load",
+    });
+
+    await page.addScriptTag({
+      path: pathToScriptFile,
+    });
+    await scenario(page);
+
+    await page.evaluate(`(${makeAllFunctionRecorded.toString()})()`);
+    await page.evaluate(`(${startRecording.toString()})()`);
+    await page.evaluate(`(${runScript.toString()})()`);
+    await page.evaluate(`(${stopRecording.toString()})()`);
+
+    const recordsWithScript = await page.evaluate<
+      ReturnType<typeof getAPIRecords>
+    >(`(${getAPIRecords.toString()})()`);
+    const durationWithScript = await page.evaluate<number>(
+      `(${getDuration.toString()})()`
+    );
+
+    const caseProfile = caseProfiles.get(file);
+    if (!caseProfile) {
+      throw new Error(`cannot find profile for ${file}`);
+    }
+
+    let paths = {};
+    const isRecordsDifferent = compareRecords(
+      caseProfile.records,
+      recordsWithScript
+    );
+    if (isRecordsDifferent) {
+      console.log(`\tresult: ❌ found side effect`);
+      paths = writeResultToFile(
+        dataDir,
+        file.replace(".html", ""),
+        JSON.stringify(caseProfile.records),
+        JSON.stringify(recordsWithScript)
+      );
+    }
+
+    const {
+      averageWithoutScript,
+      stdDevWithoutScript,
+      isOverStdDev,
+      isOverThreshold,
+    } = checkDurations(
+      caseProfile.durations,
+      durationWithScript,
+      performanceThreshold
+    );
+    const isPerformanceAffectedSignificantly = isOverStdDev || isOverThreshold;
+    if (isPerformanceAffectedSignificantly) {
+      console.log(`\tresult: ❌ found performance issue`);
+    }
+
+    if (!isRecordsDifferent && !isPerformanceAffectedSignificantly) {
+      console.log(
+        `\tresult: 🟢 found neither side effect nor performance issue`
+      );
+    }
+
+    results.push({
+      pathToFile: file,
+      // @ts-expect-error: fix type
+      record: {
+        isDifferent: isRecordsDifferent,
+        ...paths,
+      },
+      duration: {
+        durationAve: averageWithoutScript,
+        durationStdDev: stdDevWithoutScript,
+        durationThreshold: performanceThreshold,
+        durationWithScript,
+        isOverStdDev,
+        isOverThreshold,
+      },
+    });
+  } catch (e) {
+    console.log(`\terror: ${e}`);
+  }
+  await page.close();
 }
 
 function compareRecords(
