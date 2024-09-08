@@ -94,6 +94,8 @@ async function validateCases(dataDir: string, page: Page) {
 
 async function goThrough(pathToFile: string, page: Page) {
   await page.goto("file://" + pathToFile, {
+    // It's necessary to set timeout in order to detect the page which is not responding.
+    // Fuzzer sometimes generates such a page.
     timeout: TIMEOUT,
     waitUntil: "load",
   });
@@ -132,7 +134,6 @@ async function run(
     try {
       // run with script
       await page.goto("file://" + path.resolve(dataDir, file), {
-        timeout: TIMEOUT * 2,
         waitUntil: "load",
       });
 
@@ -148,10 +149,9 @@ async function run(
 
       const recordsWithScript = await page.evaluate<
         ReturnType<typeof getAPIRecords>
-      >(`(${getAPIRecords.toString()})()`, { timeout: TIMEOUT });
+      >(`(${getAPIRecords.toString()})()`);
       const durationWithScript = await page.evaluate<number>(
-        `(${getDuration.toString()})()`,
-        { timeout: TIMEOUT }
+        `(${getDuration.toString()})()`
       );
 
       const caseProfile = caseProfiles.get(file);
