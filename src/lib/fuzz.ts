@@ -16,14 +16,17 @@ export async function fuzz(_options: UserOptions) {
   const options = getMergedOptions(_options);
 
   console.log("--- generate fuzz data👶 ---");
-  const outputPath = generateData(options.dataNum, options.outputPath);
+  const isDataGenerated = generateData(options.dataNum, options.outputPath);
+  if (!isDataGenerated) {
+    throw new Error("failed to generate data. Bye!");
+  }
 
   console.log("--- setup browser🌐 ---");
   const browserContext = await createBrowserContext(options.browserOptions);
 
   console.log("--- validate test cases🔍 ---");
   const caseProfiles = await validateCases(
-    outputPath,
+    options.outputPath,
     browserContext,
     options.isParallelEnabled
   );
@@ -31,7 +34,7 @@ export async function fuzz(_options: UserOptions) {
   console.log("--- run test cases🏃 ---");
   const results = await run(
     options.scriptFilePath,
-    outputPath,
+    options.outputPath,
     browserContext,
     options.scenario,
     options.performanceThreshold,
@@ -44,8 +47,8 @@ export async function fuzz(_options: UserOptions) {
   await browserContext.browser()?.close();
 
   console.log("--- generate result📝 ---");
-  const resultPath = generateResultHTML(results, outputPath);
-  console.log("result: ", resultPath);
+  const resultPath = generateResultHTML(results, options.outputPath);
+  console.log("🎉🎉 result: ", resultPath);
 }
 
 type CaseProfile = {
