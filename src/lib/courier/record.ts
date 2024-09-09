@@ -15,6 +15,8 @@ declare global {
 }
 
 export function runAndRecordScript() {
+  window.__fuzzdiff__apiRecords = [];
+
   window.__fuzzdiff__startTime = performance.now();
   window.__fuzzdiff__isRecorded = true;
   window.jsfuzzer();
@@ -7907,8 +7909,6 @@ export function makeAllFunctionRecorded() {
   /////////////////////////////////////////////////////////////////////////
   // Here is the main part.
 
-  window.__fuzzdiff__apiRecords = [];
-
   // The recording starts when you set the flag to true.
   // So set the flag to false here, otherwise the process in this file would be also recorded.
   window.__fuzzdiff__isRecorded = false;
@@ -7917,5 +7917,6 @@ export function makeAllFunctionRecorded() {
     override(name);
   }
 
-  window.__fuzzdiff__isRecorded = true;
+  // Notice that `window.__fuzzdiff__apiRecords` is not defined yet.
+  // It's defined in `runAndRecordScript`.
 }

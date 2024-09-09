@@ -1,7 +1,6 @@
 import { BrowserContext, Page } from "@playwright/test";
 import fs from "fs";
-import path from "path";
-import { compareRecords } from "../oracle/analisys";
+import { compareRecords } from "../oracle/analysis";
 import {
   ApiRecord,
   makeAllFunctionRecorded,
@@ -15,28 +14,36 @@ type CaseProfile = {
 };
 
 const TIMEOUT = 2000;
-const SAMPLE_NUM = 3;
+
+const SAMPLE_NUM_FOR_PERF_PROFILING = 15;
+const SAMPLE_NUM_FOR_BEHAVIOR_PROFILING = 3;
 
 export async function profileCases(
-  dataDir: string,
+  files: string[],
   browserContext: BrowserContext,
-  isParallelEnabled: boolean
+  mode: "performance" | "behavior",
+  scriptOption?: {
+    scriptFile: string;
+    scenario?: (page: Page) => Promise<void>;
+  }
 ): Promise<CaseProfiles> {
-  const caseProfiles = new Map<string, CaseProfile>();
+  const shouldUseParallel = mode === "behavior";
 
-  const files = fs.readdirSync(dataDir);
-  if (isParallelEnabled) {
+  const caseProfiles = new Map<string, CaseProfile>();
+  if (shouldUseParallel) {
     await Promise.allSettled(
       files.map((file) =>
-        profileCase(path.resolve(dataDir, file), browserContext, caseProfiles)
+        profileCase(file, browserContext, caseProfiles, mode, scriptOption)
       )
     );
   } else {
     for (let i = 0; i < files.length; i++) {
       await profileCase(
-        path.resolve(dataDir, files[i]),
+        files[i],
         browserContext,
-        caseProfiles
+        caseProfiles,
+        mode,
+        scriptOption
       );
     }
   }
@@ -47,16 +54,27 @@ export async function profileCases(
 async function profileCase(
   file: string,
   browserContext: BrowserContext,
-  caseProfiles: CaseProfiles
+  caseProfiles: CaseProfiles,
+  mode: "performance" | "behavior",
+  scriptOption?: {
+    scriptFile: string;
+    scenario?: (page: Page) => Promise<void>;
+  }
 ) {
-  console.log(`validate case: ${file}`);
+  console.log(`profile case: ${file}`);
+
+  const sampleNum =
+    mode === "performance"
+      ? SAMPLE_NUM_FOR_PERF_PROFILING
+      : SAMPLE_NUM_FOR_BEHAVIOR_PROFILING;
 
   const results = [];
   try {
-    for (let i = 0; i < SAMPLE_NUM; i++) {
-      const result = await runPage(file, browserContext);
+    for (let i = 0; i < sampleNum; i++) {
+      const result = await runPage(file, browserContext, mode, scriptOption);
       if (i > 0 && compareRecords(results[i - 1].records, result.records)) {
-        throw new Error("flaky case");
+        // TODO: if script makes web page flaky, it should be told to user.
+        throw new Error("flaky page");
       }
       results.push(result);
     }
@@ -72,7 +90,15 @@ async function profileCase(
   }
 }
 
-async function runPage(file: string, browserContext: BrowserContext) {
+async function runPage(
+  file: string,
+  browserContext: BrowserContext,
+  mode: "performance" | "behavior",
+  scriptOption?: {
+    scriptFile: string;
+    scenario?: (page: Page) => Promise<void>;
+  }
+) {
   const page = await browserContext.newPage();
 
   await page.goto("file://" + file, {
@@ -82,13 +108,22 @@ async function runPage(file: string, browserContext: BrowserContext) {
     waitUntil: "load",
   });
 
-  // It's necessary to add empty script tag,
-  // otherwise `document.all.length` always returns a different result (= original+1).
-  await page.addScriptTag({ content: "() => { return; }" });
+  // Even if the script file is not provided, it's necessary to add empty script tag.
+  // Otherwise `document.all.length` always returns a different result (= original+1).
+  await page.addScriptTag(
+    scriptOption?.scriptFile
+      ? { path: scriptOption?.scriptFile }
+      : { content: "() => { return; }" }
+  );
+  if (scriptOption?.scenario) {
+    await scriptOption?.scenario(page);
+  }
 
-  await page.evaluate(`(${makeAllFunctionRecorded.toString()})()`, {
-    timeout: TIMEOUT,
-  });
+  if (mode === "behavior") {
+    await page.evaluate(`(${makeAllFunctionRecorded.toString()})()`, {
+      timeout: TIMEOUT,
+    });
+  }
 
   const result = await page.evaluate<ReturnType<typeof runAndRecordScript>>(
     `(${runAndRecordScript.toString()})()`,
@@ -100,84 +135,4 @@ async function runPage(file: string, browserContext: BrowserContext) {
   await page.close();
 
   return result;
-}
-
-export async function profileCasesWithScript(
-  pathToScriptFile: string,
-  dataDir: string,
-  browserContext: BrowserContext,
-  scenario: (page: Page) => Promise<void>,
-  isParallelEnabled: boolean
-): Promise<CaseProfiles> {
-  const caseProfilesWithScript = new Map<string, CaseProfile>();
-
-  const files = fs.readdirSync(dataDir);
-  console.log("test cases:\n", files.join("\n"));
-
-  if (isParallelEnabled) {
-    await Promise.allSettled(
-      files.map((file) =>
-        profileCaseWithScript(
-          path.resolve(dataDir, file),
-          path.resolve(process.cwd(), pathToScriptFile),
-          browserContext,
-          scenario,
-          caseProfilesWithScript
-        )
-      )
-    );
-  } else {
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      await profileCaseWithScript(
-        path.resolve(dataDir, file),
-        path.resolve(process.cwd(), pathToScriptFile),
-        browserContext,
-        scenario,
-        caseProfilesWithScript
-      );
-    }
-  }
-
-  return caseProfilesWithScript;
-}
-
-async function profileCaseWithScript(
-  file: string,
-  scriptFile: string,
-  browserContext: BrowserContext,
-  scenario: (page: Page) => Promise<void>,
-  caseProfiles: Map<string, CaseProfile>
-) {
-  console.log("run test: ", file.split("/").at(-1));
-
-  const page = await browserContext.newPage();
-  try {
-    // run with script
-    await page.goto("file://" + file, {
-      waitUntil: "load",
-    });
-
-    await page.addScriptTag({
-      path: scriptFile,
-    });
-    await scenario(page);
-
-    await page.evaluate(`(${makeAllFunctionRecorded.toString()})()`);
-    const { records: recordsWithScript, duration: durationWithScript } =
-      await page.evaluate<ReturnType<typeof runAndRecordScript>>(
-        `(${runAndRecordScript.toString()})()`
-      );
-
-    caseProfiles.set(file, {
-      records: recordsWithScript,
-      durations: [durationWithScript],
-    });
-  } catch (e) {
-    console.log(
-      `failed to profile case with script: ${file.split("/").at(-1)}`
-    );
-    console.log(`\terror: ${e}`);
-  }
-  await page.close();
 }

@@ -1,14 +1,23 @@
+import fs from "fs";
+import path from "path";
 import { createBrowserContext } from "./courier/browser";
-import {
-  profileCases as profileCasesWithoutScript,
-  profileCasesWithScript,
-} from "./courier/profile";
+import { profileCases } from "./courier/profile";
 import { getMergedOptions, UserOptions } from "./options";
-import { generateResults } from "./oracle/analisys";
+import { generateResults } from "./oracle/analysis";
 import { generateResultHTML } from "./oracle/result";
 import { generateData } from "./poet/generator";
 
-export async function fuzz(_options: UserOptions) {
+export async function fuzzPerformance(options: UserOptions) {
+  fuzz(options, "performance");
+}
+
+export async function fuzzBehavior(
+  options: Omit<UserOptions, "performanceThreshold">
+) {
+  fuzz(options, "behavior");
+}
+
+async function fuzz(_options: UserOptions, mode: "performance" | "behavior") {
   const options = getMergedOptions(_options);
 
   console.log("--- generate fuzz data👶 ---");
@@ -21,19 +30,23 @@ export async function fuzz(_options: UserOptions) {
   const browserContext = await createBrowserContext(options.browserOptions);
 
   console.log("--- validate test cases🔍 ---");
-  const caseProfilesWithoutScript = await profileCasesWithoutScript(
-    options.outputPath,
+  const files1 = getFiles(options.outputPath);
+  const caseProfilesWithoutScript = await profileCases(
+    files1,
     browserContext,
-    options.isParallelEnabled
+    mode
   );
 
   console.log("--- run test cases🏃 ---");
-  const caseProfilesWithScript = await profileCasesWithScript(
-    options.scriptFilePath,
-    options.outputPath,
+  const files2 = getFiles(options.outputPath);
+  const caseProfilesWithScript = await profileCases(
+    files2,
     browserContext,
-    options.scenario,
-    options.isParallelEnabled
+    mode,
+    {
+      scriptFile: path.resolve(process.cwd(), options.scriptFilePath),
+      scenario: options.scenario,
+    }
   );
 
   console.log("--- profiling done! close browser👋 ---");
@@ -45,8 +58,13 @@ export async function fuzz(_options: UserOptions) {
     caseProfilesWithScript,
     caseProfilesWithoutScript,
     options.outputPath,
-    options.performanceThreshold
+    mode,
+    mode === "behavior" ? undefined : options.performanceThreshold
   );
-  const resultPath = generateResultHTML(results, options.outputPath);
+  const resultPath = generateResultHTML(options.outputPath, results);
   console.log("🎉🎉 result: ", resultPath);
+}
+
+function getFiles(dir: string): string[] {
+  return fs.readdirSync(dir).map((file) => path.resolve(dir, file));
 }
