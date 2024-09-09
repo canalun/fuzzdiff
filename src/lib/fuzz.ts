@@ -61,6 +61,11 @@ async function fuzz(_options: UserOptions, mode: "performance" | "behavior") {
     mode,
     mode === "behavior" ? undefined : options.performanceThreshold
   );
+  if (results.length === 0) {
+    console.log("No test cases are valid. Bye!");
+    return;
+  }
+
   const resultPath = generateResultHTML(options.outputPath, results);
   console.log("🎉🎉 result: ", resultPath);
 }

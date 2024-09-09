@@ -37,8 +37,7 @@ export function generateResults<T extends "performance" | "behavior">(
         const result = {
           fileName: file.split("/").at(-1)!,
           ...generateResultForBehavior(
-            file.split("/").at(-1)!,
-            file.split("/").splice(0, -1).join("/"),
+            file,
             caseProfileWithoutScript.records,
             caseProfileWithScript.records
           ),
@@ -103,11 +102,10 @@ function generateResultForPerformance(
 
 function generateResultForBehavior(
   file: string,
-  dataDir: string,
   baseRecords: ApiRecord[],
   targetRecords: ApiRecord[]
 ): Omit<BehaviorResult, "fileName"> {
-  console.log("check behavior change: ", file);
+  console.log("check behavior change: ", file.split("/").at(-1));
 
   const trimmedBaseRecords = trimRecords(baseRecords);
   const trimmedTargetRecords = trimRecords(targetRecords);
@@ -130,8 +128,7 @@ function generateResultForBehavior(
             isDifferent: isRecordsDifferent,
             // TODO: move to result.ts
             ...writeResultToFile(
-              dataDir,
-              file.replace(".html", ""),
+              file,
               JSON.stringify(baseRecords),
               JSON.stringify(targetRecords)
             ),
@@ -153,7 +150,7 @@ export function trimRecords(records: ApiRecord[]) {
       r.name.includes("getElementById") &&
       r.argumentsList === `["htmlvar00001"]` // refer to domato template.html
   );
-  return records.splice(0, startIndex);
+  return records.slice(startIndex);
 }
 
 export function compareRecords(records1: ApiRecord[], records2: ApiRecord[]) {
@@ -174,47 +171,14 @@ export function compareRecords(records1: ApiRecord[], records2: ApiRecord[]) {
   return isDifferent;
 }
 
-function checkDurations(
-  durationsWithoutScript: number[],
-  durationWithScript: number[],
-  performanceThreshold: number
-) {
-  const averageWithoutScript =
-    durationsWithoutScript.reduce((p, c) => p + c, 0) /
-    durationsWithoutScript.length;
-  const stdDevWithoutScript = Math.sqrt(
-    durationsWithoutScript.reduce(
-      (p, c) => p + (c - averageWithoutScript) ** 2,
-      0
-    ) / durationsWithoutScript.length
-  );
-  const averageWithScript =
-    durationWithScript.reduce((p, c) => p + c, 0) / durationWithScript.length;
-  // TODO: use 3 sigma rule
-  const isOverStdDev =
-    averageWithScript - averageWithoutScript > stdDevWithoutScript;
-  const isOverThreshold =
-    (averageWithScript - averageWithoutScript) / averageWithoutScript >
-    performanceThreshold;
-
-  console.log("average: ", averageWithoutScript);
-  console.log("stdDev: ", stdDevWithoutScript);
-  console.log("duration w/script: ", averageWithScript);
-
-  return {
-    averageWithoutScript,
-    stdDevWithoutScript,
-    isOverStdDev,
-    isOverThreshold,
-  };
-}
-
 function writeResultToFile(
-  outputPath: string,
-  filePrefix: string,
+  file: string,
   _resultWithoutScript: string,
   _resultWithScript: string
 ) {
+  const filePrefix = file.split("/").at(-1)!.replace(".html", "");
+  const outputPath = file.split("/").slice(0, -1).join("/");
+
   const pathToRecordWithoutScript = `${filePrefix}-without-script.txt`;
   const resultWithoutScript = _resultWithoutScript.replaceAll(
     `"},{"name`,
@@ -256,5 +220,40 @@ function writeResultToFile(
     pathToRecordWithScript,
     pathToRecordWithoutScript,
     pathToRecordDiff,
+  };
+}
+
+function checkDurations(
+  durationsWithoutScript: number[],
+  durationWithScript: number[],
+  performanceThreshold: number
+) {
+  const averageWithoutScript =
+    durationsWithoutScript.reduce((p, c) => p + c, 0) /
+    durationsWithoutScript.length;
+  const stdDevWithoutScript = Math.sqrt(
+    durationsWithoutScript.reduce(
+      (p, c) => p + (c - averageWithoutScript) ** 2,
+      0
+    ) / durationsWithoutScript.length
+  );
+  const averageWithScript =
+    durationWithScript.reduce((p, c) => p + c, 0) / durationWithScript.length;
+  // TODO: use 3 sigma rule
+  const isOverStdDev =
+    averageWithScript - averageWithoutScript > stdDevWithoutScript;
+  const isOverThreshold =
+    (averageWithScript - averageWithoutScript) / averageWithoutScript >
+    performanceThreshold;
+
+  console.log("average: ", averageWithoutScript);
+  console.log("stdDev: ", stdDevWithoutScript);
+  console.log("duration w/script: ", averageWithScript);
+
+  return {
+    averageWithoutScript,
+    stdDevWithoutScript,
+    isOverStdDev,
+    isOverThreshold,
   };
 }

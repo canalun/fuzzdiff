@@ -7848,6 +7848,8 @@ export function makeAllFunctionRecorded() {
   // otherwise they causes infinite loops.
   // Now, you have to comment out the function name in the list above
   // when you wanna use the function here.
+  // TODO: Moreover, if the user script override some functions in this function,
+  //       it causes infinite loops. So, we need to avoid it.
   function createProxyHandler(name: string): {
     apply(target: any, thisArg: any, argumentsList: any): unknown;
   } {
@@ -7866,6 +7868,8 @@ export function makeAllFunctionRecorded() {
   // otherwise they causes infinite loops.
   // Now, you have to comment out the function name in the list above
   // when you wanna use the function here.
+  // TODO: Moreover, if the user script override some functions in this function,
+  //       it causes infinite loops. So, we need to avoid it.
   function addRecord(
     name: string,
     argsList: unknown[],
