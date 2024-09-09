@@ -89,6 +89,7 @@ async function profileCase(
       results.push(result);
     }
 
+    console.log("profiled: ", file);
     caseProfiles.set(file, {
       records: results[0].records,
       durations: results.map((r) => r.duration),
@@ -111,6 +112,7 @@ async function runPage(
 ) {
   const page = await browserContext.newPage();
 
+  console.log("run: ", file);
   await page.goto("file://" + file, {
     // It's necessary to set timeout in order to detect the page which is not responding.
     // Fuzzer sometimes generates such a page.
@@ -122,7 +124,10 @@ async function runPage(
   // Otherwise `document.all.length` always returns a different result (= original+1).
   await page.addScriptTag(
     scriptOption?.scriptFile
-      ? { path: scriptOption?.scriptFile }
+      ? (() => {
+          console.log("add your script: ", file);
+          return { path: scriptOption?.scriptFile };
+        })()
       : { content: "() => { return; }" }
   );
   if (scriptOption?.scenario) {
