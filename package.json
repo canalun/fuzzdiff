@@ -11,7 +11,7 @@
   "scripts": {
     "build:cjs": "tsc --project tsconfig.cjs.json",
     "build:esm": "tsc --project tsconfig.esm.json",
-    "build": "yarn build:cjs && yarn build:esm"
+    "build": "rm -rf ./dist && yarn build:cjs && yarn build:esm"
   },
   "devDependencies": {
     "@types/diff": "^5.2.2",
