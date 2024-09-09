@@ -13,10 +13,8 @@ export function generateResults<T extends "performance" | "behavior">(
   mode: T,
   performanceThreshold: T extends "performance" ? number : undefined
 ): T extends "behavior" ? BehaviorResult[] : PerformanceResult[] {
-  const files = new Set(
-    Array.from(caseProfilesWithScript.keys()).concat(
-      Array.from(caseProfilesWithoutScript.keys())
-    )
+  const files = Array.from(caseProfilesWithScript.keys()).filter((file) =>
+    caseProfilesWithoutScript.has(file)
   );
 
   const results = [];
