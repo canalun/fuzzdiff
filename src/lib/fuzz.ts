@@ -2,9 +2,9 @@ import { createBrowserContext } from "./courier/browser";
 import {
   profileCases as profileCasesWithoutScript,
   profileCasesWithScript,
-} from "./courier/profiler";
+} from "./courier/profile";
 import { getMergedOptions, UserOptions } from "./options";
-import { generateResults } from "./oracle/analyzer";
+import { generateResults } from "./oracle/analisys";
 import { generateResultHTML } from "./oracle/result";
 import { generateData } from "./poet/generator";
 

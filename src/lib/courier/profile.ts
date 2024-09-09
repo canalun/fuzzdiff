@@ -1,12 +1,12 @@
 import { BrowserContext, Page } from "@playwright/test";
 import fs from "fs";
 import path from "path";
-import { compareRecords } from "../oracle/analyzer";
+import { compareRecords } from "../oracle/analisys";
 import {
   ApiRecord,
   makeAllFunctionRecorded,
   runAndRecordScript,
-} from "./recorder";
+} from "./record";
 
 export type CaseProfiles = Map<string, CaseProfile>;
 type CaseProfile = {
