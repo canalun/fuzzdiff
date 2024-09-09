@@ -1,6 +1,6 @@
 {
   "name": "@canalun/fuzzdiff",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "fuzzer for third party script developers",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
