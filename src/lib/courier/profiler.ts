@@ -82,6 +82,10 @@ async function runPage(file: string, browserContext: BrowserContext) {
     waitUntil: "load",
   });
 
+  // It's necessary to add empty script tag,
+  // otherwise `document.all.length` always returns a different result (= original+1).
+  await page.addScriptTag({ content: "() => { return; }" });
+
   await page.evaluate(`(${makeAllFunctionRecorded.toString()})()`, {
     timeout: TIMEOUT,
   });
