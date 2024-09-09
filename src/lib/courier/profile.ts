@@ -18,6 +18,8 @@ const TIMEOUT = 2000;
 const SAMPLE_NUM_FOR_PERF_PROFILING = 15;
 const SAMPLE_NUM_FOR_BEHAVIOR_PROFILING = 3;
 
+const PARALLEL_CHUNK_SIZE = 4;
+
 export async function profileCases(
   files: string[],
   browserContext: BrowserContext,
@@ -31,11 +33,19 @@ export async function profileCases(
 
   const caseProfiles = new Map<string, CaseProfile>();
   if (shouldUseParallel) {
-    await Promise.allSettled(
-      files.map((file) =>
-        profileCase(file, browserContext, caseProfiles, mode, scriptOption)
-      )
-    );
+    // Run in parallel, but set the max number of parallel tasks to 4.
+    // Too many parallel tasks can cause the browser to crash or hang.
+    const chunks = [];
+    for (let i = 0; i < files.length; i += PARALLEL_CHUNK_SIZE) {
+      chunks.push(files.slice(i, i + PARALLEL_CHUNK_SIZE));
+    }
+    for (const chunk of chunks) {
+      await Promise.allSettled(
+        chunk.map((file) =>
+          profileCase(file, browserContext, caseProfiles, mode, scriptOption)
+        )
+      );
+    }
   } else {
     for (let i = 0; i < files.length; i++) {
       await profileCase(

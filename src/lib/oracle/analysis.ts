@@ -109,6 +109,8 @@ function generateResultForBehavior(
   baseRecords: ApiRecord[],
   targetRecords: ApiRecord[]
 ): Omit<BehaviorResult, "fileName"> {
+  console.log("check behavior change: ", file);
+
   const trimmedBaseRecords = trimRecords(baseRecords);
   const trimmedTargetRecords = trimRecords(targetRecords);
 
