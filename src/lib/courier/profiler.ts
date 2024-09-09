@@ -1,7 +1,7 @@
 import { BrowserContext, Page } from "@playwright/test";
 import fs from "fs";
 import path from "path";
-import { compareRecords } from "./analyzer";
+import { compareRecords } from "../oracle/analyzer";
 import {
   ApiRecord,
   makeAllFunctionRecorded,

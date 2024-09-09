@@ -1,8 +1,8 @@
 import { diffLines } from "diff";
 import fs from "fs";
 import path from "path";
-import { CaseProfiles } from "./profiler";
-import { ApiRecord } from "./recorder";
+import { CaseProfiles } from "../courier/profiler";
+import { ApiRecord } from "../courier/recorder";
 import { Result } from "./result";
 
 export function generateResults(

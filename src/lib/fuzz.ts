@@ -1,12 +1,12 @@
-import { generateResults } from "./analyzer";
-import { createBrowserContext } from "./browser";
-import { generateData } from "./generator";
-import { getMergedOptions, UserOptions } from "./options";
+import { createBrowserContext } from "./courier/browser";
 import {
   profileCases as profileCasesWithoutScript,
   profileCasesWithScript,
-} from "./profiler";
-import { generateResultHTML } from "./result";
+} from "./courier/profiler";
+import { getMergedOptions, UserOptions } from "./options";
+import { generateResults } from "./oracle/analyzer";
+import { generateResultHTML } from "./oracle/result";
+import { generateData } from "./poet/generator";
 
 export async function fuzz(_options: UserOptions) {
   const options = getMergedOptions(_options);

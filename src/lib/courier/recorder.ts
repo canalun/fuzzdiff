@@ -1,5 +1,3 @@
-// https://gist.github.com/canalun/0713a64cf95ada95ed6cffda21069aef
-
 export type ApiRecord = {
   name: string;
   argumentsList: string;
