@@ -154,7 +154,6 @@ export function trimRecords(records: ApiRecord[]) {
 }
 
 export function compareRecords(records1: ApiRecord[], records2: ApiRecord[]) {
-  // compare
   let isDifferent = false;
   for (let i = 0; i < records1.length; i++) {
     const r1 = records2[i];

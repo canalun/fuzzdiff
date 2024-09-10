@@ -7870,6 +7870,7 @@ export function makeAllFunctionRecorded() {
   // when you wanna use the function here.
   // TODO: Moreover, if the user script override some functions in this function,
   //       it causes infinite loops. So, we need to avoid it.
+  // TODO: more precise stringification
   function addRecord(
     name: string,
     argsList: unknown[],
