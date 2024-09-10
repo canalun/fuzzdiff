@@ -10,7 +10,6 @@ const options = {
   scriptFilePath: path.resolve(__dirname, "./sample-effect.js"),
   outputPath: path.resolve(__dirname, "../fuzz"),
   performanceThreshold: 0.1,
-  isParallelEnabled: false,
 };
 
 fuzzBehavior(options);
