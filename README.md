@@ -16,7 +16,7 @@ This is the basic idea.
 # usage
 
 ```js
-import { fuzzBehavior, fussPerformance } from '@canalun/fuzzdiff'
+import { fuzzBehavior, fuzzPerformance } from '@canalun/fuzzdiff'
 
 // check behavioral side-effects
 fuzzBehavior('path/to/your/script')
