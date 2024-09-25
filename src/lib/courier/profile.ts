@@ -113,41 +113,46 @@ async function runPage(
   const page = await browserContext.newPage();
 
   console.log("run: ", file);
-  await page.goto("file://" + file, {
-    // It's necessary to set timeout in order to detect the page which is not responding.
-    // Fuzzer sometimes generates such a page.
-    timeout: TIMEOUT,
-    waitUntil: "load",
-  });
 
-  // Even if the script file is not provided, it's necessary to add empty script tag.
-  // Otherwise `document.all.length` always returns a different result (= original+1).
-  await page.addScriptTag(
-    scriptOption?.scriptFile
-      ? (() => {
-          console.log("add your script: ", file);
-          return { path: scriptOption?.scriptFile };
-        })()
-      : { content: "() => { return; }" }
-  );
-  if (scriptOption?.scenario) {
-    await scriptOption?.scenario(page);
-  }
-
-  if (mode === "behavior") {
-    await page.evaluate(`(${makeAllFunctionRecorded.toString()})()`, {
+  try {
+    await page.goto("file://" + file, {
+      // It's necessary to set timeout in order to detect the page which is not responding.
+      // Fuzzer sometimes generates such a page.
       timeout: TIMEOUT,
+      waitUntil: "load",
     });
-  }
 
-  const result = await page.evaluate<ReturnType<typeof runAndRecordScript>>(
-    `(${runAndRecordScript.toString()})()`,
-    {
-      timeout: TIMEOUT,
+    // Even if the script file is not provided, it's necessary to add empty script tag.
+    // Otherwise `document.all.length` always returns a different result (= original+1).
+    await page.addScriptTag(
+      scriptOption?.scriptFile
+        ? (() => {
+            console.log("add your script: ", file);
+            return { path: scriptOption?.scriptFile };
+          })()
+        : { content: "() => { return; }" }
+    );
+    if (scriptOption?.scenario) {
+      await scriptOption?.scenario(page);
     }
-  );
 
-  await page.close();
+    if (mode === "behavior") {
+      await page.evaluate(`(${makeAllFunctionRecorded.toString()})()`, {
+        timeout: TIMEOUT,
+      });
+    }
 
-  return result;
+    const result = await page.evaluate<ReturnType<typeof runAndRecordScript>>(
+      `(${runAndRecordScript.toString()})()`,
+      {
+        timeout: TIMEOUT,
+      }
+    );
+
+    return result;
+  } catch (e) {
+    throw e;
+  } finally {
+    await page.close();
+  }
 }
