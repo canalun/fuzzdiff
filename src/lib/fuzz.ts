@@ -30,17 +30,17 @@ async function fuzz(_options: UserOptions, mode: "performance" | "behavior") {
   const browserContext = await createBrowserContext(options.browserOptions);
 
   console.log("--- validate test cases🔍 ---");
-  const files1 = getFiles(options.outputPath);
+  const generatedFiles = getFiles(options.outputPath);
   const caseProfilesWithoutScript = await profileCases(
-    files1,
+    generatedFiles,
     browserContext,
     mode
   );
 
   console.log("--- run test cases🏃 ---");
-  const files2 = getFiles(options.outputPath);
+  const validatedFiles = getFiles(options.outputPath);
   const caseProfilesWithScript = await profileCases(
-    files2,
+    validatedFiles,
     browserContext,
     mode,
     {
