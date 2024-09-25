@@ -101,7 +101,7 @@ async function profileCase(
   }
 }
 
-async function runPage(
+export async function runPage(
   file: string,
   browserContext: BrowserContext,
   mode: "performance" | "behavior",
