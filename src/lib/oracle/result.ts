@@ -18,6 +18,7 @@ export type BehaviorResult = {
   record:
     | {
         isDifferent: true;
+        diffApis: string[];
         pathToRecordWithoutScript: string;
         pathToRecordWithScript: string;
         pathToRecordDiff: string;
@@ -72,6 +73,7 @@ function generateTableHTML(results: PerformanceResult[] | BehaviorResult[]) {
           mode === "behavior"
             ? `
               <th>Record Diff</th>
+              <th>Diff Apis</th>
               <th>Record Without Script</th>
               <th>Record With Script</th>
               `
@@ -113,10 +115,12 @@ function generateTableHTML(results: PerformanceResult[] | BehaviorResult[]) {
 function generateRecordsCells(recordResult: BehaviorResult["record"]) {
   if (recordResult.isDifferent) {
     return `<td style="background-color: red;"><a href="${recordResult.pathToRecordDiff}">Link</a></td>
+            <td>${recordResult.diffApis}</td>
             <td><a href="${recordResult.pathToRecordWithoutScript}">Link</a></td>
             <td><a href="${recordResult.pathToRecordWithScript}">Link</a></td>`;
   } else {
     return `<td>No Diff</td>
+            <td>-</td>
             <td>-</td>
             <td>-</td>`;
   }

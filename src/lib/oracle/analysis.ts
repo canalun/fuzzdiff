@@ -121,23 +121,42 @@ function generateResultForBehavior(
     console.log(`\tresult: 🟢 found no behavior change`);
   }
 
-  return {
-    record: {
-      ...(isRecordsDifferent
-        ? {
-            isDifferent: isRecordsDifferent,
-            // TODO: move to result.ts
-            ...writeResultToFile(
-              file,
-              JSON.stringify(baseRecords),
-              JSON.stringify(targetRecords)
-            ),
-          }
-        : {
-            isDifferent: isRecordsDifferent,
-          }),
-    },
-  };
+  if (isRecordsDifferent) {
+    const record = writeResultToFile(
+      file,
+      JSON.stringify(baseRecords),
+      JSON.stringify(targetRecords)
+    );
+
+    const _diffApis = [];
+    for (let i = 0; i < record.diff.length; i++) {
+      const diff = record.diff[i];
+      if (diff.added || diff.removed) {
+        const value = diff.value;
+        try {
+          _diffApis.push(JSON.parse(value.replaceAll(/},\n/gi, "}")).name);
+        } catch (e) {
+          console.log("JSON parse error: ", e);
+          console.log("failed value: ", value);
+        }
+      }
+    }
+    const diffApis = [...new Set(_diffApis)];
+
+    return {
+      record: {
+        isDifferent: isRecordsDifferent,
+        diffApis,
+        ...record.files,
+      },
+    };
+  } else {
+    return {
+      record: {
+        isDifferent: isRecordsDifferent,
+      },
+    };
+  }
 }
 
 export function trimRecords(records: ApiRecord[]) {
@@ -216,9 +235,12 @@ function writeResultToFile(
   );
 
   return {
-    pathToRecordWithScript,
-    pathToRecordWithoutScript,
-    pathToRecordDiff,
+    diff: resultDiff,
+    files: {
+      pathToRecordWithScript,
+      pathToRecordWithoutScript,
+      pathToRecordDiff,
+    },
   };
 }
 
