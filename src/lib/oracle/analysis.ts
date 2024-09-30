@@ -134,9 +134,14 @@ function generateResultForBehavior(
       if (diff.added || diff.removed) {
         const value = diff.value;
         try {
-          _diffApis.push(JSON.parse(value.replaceAll(/},\n/gi, "}")).name);
+          _diffApis.push(
+            // each line is like: `{"name":"globalThis.String.prototype.includes","argumentsList":"[\"a\"]","boundThis":"\"version\"","result":""}`
+            ...value
+              .match(/\"name\"\:\"(.*)\",\"argumentsList\"/g)!
+              .map((str) => str.slice(8, -17))
+          );
         } catch (e) {
-          console.log("JSON parse error: ", e);
+          console.log("parse error: ", e);
           console.log("failed value: ", value);
         }
       }
