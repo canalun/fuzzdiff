@@ -22,10 +22,11 @@ import { fuzzBehavior, fuzzPerformance } from '@canalun/fuzzdiff'
 fuzzBehavior('path/to/your/script')
 
 // check performance side-effects
+// WARNING: Currently it's NOT working!
 fuzzPerformance('path/to/your/script')
 ```
 
 Please try samples.
 ```bash
-$ node ./sample/fuzztest.js
+$ node ./sample/behavior.js
 ```

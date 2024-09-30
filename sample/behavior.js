@@ -7,9 +7,8 @@ const __dirname = path.dirname(__filename);
 
 const options = {
   dataNum: 20,
-  scriptFilePath: path.resolve(__dirname, "./sample-effect.js"),
+  scriptFilePath: path.resolve(__dirname, "./script-with-effect.js"),
   outputPath: path.resolve(__dirname, "../fuzz"),
-  performanceThreshold: 0.1,
 };
 
 fuzzBehavior(options);
