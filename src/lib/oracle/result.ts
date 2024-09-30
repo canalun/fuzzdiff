@@ -114,9 +114,13 @@ function generateTableHTML(results: PerformanceResult[] | BehaviorResult[]) {
 
 function generateRecordsCells(recordResult: BehaviorResult["record"]) {
   if (recordResult.isDifferent) {
-    return `<td style="background-color: red;"><a href="${recordResult.pathToRecordDiff}">Link</a></td>
-            <td>${recordResult.diffApis}</td>
-            <td><a href="${recordResult.pathToRecordWithoutScript}">Link</a></td>
+    return `<td style="background-color: red;"><a href="${
+      recordResult.pathToRecordDiff
+    }">Link</a></td>
+            <td>${recordResult.diffApis.join("\n")}</td>
+            <td><a href="${
+              recordResult.pathToRecordWithoutScript
+            }">Link</a></td>
             <td><a href="${recordResult.pathToRecordWithScript}">Link</a></td>`;
   } else {
     return `<td>No Diff</td>
