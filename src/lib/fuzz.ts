@@ -1,3 +1,4 @@
+import * as child_process from "child_process";
 import fs from "fs";
 import path from "path";
 import { createBrowserContext } from "./courier/browser";
@@ -67,7 +68,8 @@ async function fuzz(_options: UserOptions, mode: "performance" | "behavior") {
   }
 
   const resultPath = generateResultHTML(options.outputPath, results);
-  console.log("🎉🎉 result: ", resultPath);
+  console.log("🎉🎉 opening result...");
+  child_process.execSync(`open ${resultPath}`);
 }
 
 function getFiles(dir: string): string[] {
