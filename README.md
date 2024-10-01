@@ -1,6 +1,8 @@
 # fuzzdiff 
 fuzzer for third party script developers :)
 
+![Screen Recording 2024-10-01 at 13 59 09](https://github.com/user-attachments/assets/2b113870-3536-45f2-ac45-ec1caf83c4d1)
+
 # idea
 
 'fuzzdiff' checks if your script has side effect on the page it's embedded on.
