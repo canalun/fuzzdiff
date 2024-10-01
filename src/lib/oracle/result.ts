@@ -117,7 +117,7 @@ function generateRecordsCells(recordResult: BehaviorResult["record"]) {
     return `<td style="background-color: red;"><a href="${
       recordResult.pathToRecordDiff
     }">Link</a></td>
-            <td>${recordResult.diffApis.join("\n")}</td>
+            <td>${recordResult.diffApis.join("<br/>")}</td>
             <td><a href="${
               recordResult.pathToRecordWithoutScript
             }">Link</a></td>
