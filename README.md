@@ -1,3 +1,7 @@
+This project is WIP.
+
+If you have any idea to improve this fuzzer, would be glad if you let me know via issues :)
+
 # fuzzdiff 
 fuzzer for third party script developers :)
 
