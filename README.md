@@ -18,17 +18,23 @@ This is the basic idea.
 # usage
 
 ```js
-import { fuzzBehavior, fuzzPerformance } from '@canalun/fuzzdiff'
+import { fuzzBehavior } from '@canalun/fuzzdiff'
+
+const options = {
+  dataNum: 10,
+  scriptFilePath: path.resolve(__dirname, 'path/to/your/script'),
+  outputPath: path.resolve(__dirname, 'path/to/output/dir'),
+};
 
 // check behavioral side-effects
-fuzzBehavior('path/to/your/script')
-
-// check performance side-effects
-// WARNING: Currently it's NOT working!
-fuzzPerformance('path/to/your/script')
+fuzzBehavior(options)
 ```
 
 Please try samples.
 ```bash
 $ node ./sample/behavior.js
 ```
+
+# requirements
+
+You need `python3`! Sorry for inconvenience...!
